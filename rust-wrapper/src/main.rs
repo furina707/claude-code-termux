@@ -1,9 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use crossterm::{
-    style::{Color, Stylize},
-    ExecutableCommand,
-};
+use crossterm::style::Stylize;
 use std::{
     path::PathBuf,
     process::{Command, Stdio},
@@ -35,7 +32,6 @@ enum Commands {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let term = crossterm::terminal();
 
     match cli.command {
         Some(Commands::Update) => update()?,
@@ -130,7 +126,7 @@ fn update() -> Result<()> {
     // Check latest version
     println!("{} Fetching latest version info...", "▸".yellow());
     let latest = get_latest_version()?;
-    println!("  └─ {}: {}", "Latest".dim(), latest.green());
+    println!("  └─ {}: {}", "Latest".dim(), latest.clone().green());
     println!();
 
     // Compare
