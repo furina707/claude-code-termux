@@ -163,21 +163,6 @@ fi
 # ── step 7: api key + config ──────────────────────────────────
 sep "7/7  API Key & Config"
 
-# Load existing settings if available
-EXISTING_KEY=""
-EXISTING_URL=""
-EXISTING_MODEL=""
-
-if [[ -f "$CFG" ]]; then
-    log "Load existing settings..."
-    EXISTING_KEY=$(grep -o '"ANTHROPIC_API_KEY"[[:space:]]*:[[:space:]]*"[^"]*"' "$CFG" 2>/dev/null | sed 's/.*"\([^"]*\)"$/\1/' | head -1)
-    EXISTING_URL=$(grep -o '"ANTHROPIC_BASE_URL"[[:space:]]*:[[:space:]]*"[^"]*"' "$CFG" 2>/dev/null | sed 's/.*"\([^"]*\)"$/\1/' | head -1)
-    EXISTING_MODEL=$(grep -o '"ANTHROPIC_MODEL"[[:space:]]*:[[:space:]]*"[^"]*"' "$CFG" 2>/dev/null | sed 's/.*"\([^"]*\)"$/\1/' | head -1)
-    [[ -n "$EXISTING_KEY" ]] && ok "API key ditemukan"
-    [[ -n "$EXISTING_URL" ]] && ok "Base URL ditemukan"
-    [[ -n "$EXISTING_MODEL" ]] && ok "Model ditemukan"
-fi
-
 # ── api key ───────────────────────────────────────────────────
 FINAL_KEY="${ANTHROPIC_API_KEY:-}"
 
@@ -190,40 +175,25 @@ fi
 
 if [[ -z "$FINAL_KEY" ]]; then
     printf "\n  ${BLD}Anthropic API Key${NC}\n"
-    [[ -n "$EXISTING_KEY" ]] && printf "  ${GRN}Sekarang:${NC} %s...%s\n" "${EXISTING_KEY:0:20}" "${EXISTING_KEY: -4}"
     printf "  ${DIM}→ console.anthropic.com/settings/keys${NC}\n\n"
-    printf "  Key (Enter = keep existing): "
-    read -rs raw; echo
-    if   [[ -z "$raw" ]];           then [[ -n "$EXISTING_KEY" ]] && FINAL_KEY="$EXISTING_KEY" || warn "dilewati — set manual nanti"; [[ -n "$EXISTING_KEY" ]] && ok "keep existing key" || true
-    elif [[ "$raw" == sk-ant-* ]];  then FINAL_KEY="$raw"; ok "key ok"
-    else warn "harus diawali sk-ant-  coba lagi"
-    fi
+    while true; do
+        printf "  Key (Enter = skip): "
+        read -rs raw; echo
+        if   [[ -z "$raw" ]];           then warn "dilewati — set manual nanti"; break
+        elif [[ "$raw" == sk-ant-* ]];  then FINAL_KEY="$raw"; ok "key ok"; break
+        else warn "harus diawali sk-ant-  coba lagi"
+        fi
+    done
 fi
 
 # ── base url (opsional, untuk custom endpoint) ────────────────
 printf "\n  ${BLD}Base URL${NC} ${DIM}(kosongkan untuk default Anthropic)${NC}\n"
-[[ -n "$EXISTING_URL" ]] && printf "  ${GRN}Sekarang:${NC} %s\n" "$EXISTING_URL"
 printf "  ${DIM}contoh: https://opencode.ai/zen${NC}\n\n"
-printf "  Base URL (Enter = keep existing): "
+printf "  Base URL (Enter = skip): "
 read -r BASE_URL
-[[ -z "$BASE_URL" && -n "$EXISTING_URL" ]] && BASE_URL="$EXISTING_URL" && ok "keep existing URL"
 
 # ── model ─────────────────────────────────────────────────────
-DEFAULT_CHOICE="1"
-if [[ -n "$EXISTING_MODEL" ]]; then
-    case "$EXISTING_MODEL" in
-        claude-sonnet-4-5) DEFAULT_CHOICE="1" ;;
-        claude-opus-4-5) DEFAULT_CHOICE="2" ;;
-        claude-haiku-4-5) DEFAULT_CHOICE="3" ;;
-        claude-sonnet-4-0) DEFAULT_CHOICE="4" ;;
-        claude-opus-4-0) DEFAULT_CHOICE="5" ;;
-        claude-3-7-sonnet-20250219) DEFAULT_CHOICE="6" ;;
-        claude-3-5-haiku-20241022) DEFAULT_CHOICE="7" ;;
-    esac
-fi
-
-printf "\n  ${BLD}Pilih model${NC}\n"
-[[ -n "$EXISTING_MODEL" ]] && printf "  ${GRN}Sekarang:${NC} %s\n\n" "$EXISTING_MODEL"
+printf "\n  ${BLD}Pilih model${NC}\n\n"
 printf "  ${GRN}1)${NC} claude-sonnet-4-5         ${DIM}← recommended${NC}\n"
 printf "  2) claude-opus-4-5           ${DIM}paling pintar${NC}\n"
 printf "  3) claude-haiku-4-5          ${DIM}paling cepat${NC}\n"
@@ -232,9 +202,9 @@ printf "  5) claude-opus-4-0\n"
 printf "  6) claude-3-7-sonnet-20250219\n"
 printf "  7) claude-3-5-haiku-20241022\n"
 printf "  8) custom\n\n"
-printf "  Pilihan [${DEFAULT_CHOICE}]: "
+printf "  Pilihan [1]: "
 read -r choice
-[[ -z "$choice" ]] && choice="$DEFAULT_CHOICE"
+[[ -z "$choice" ]] && choice="1"
 
 case "$choice" in
     1) MODEL="claude-sonnet-4-5" ;;
@@ -260,66 +230,25 @@ ENV_BLOCK="    \"ANTHROPIC_MODEL\": \"${MODEL}\""
 printf '{\n  "env": {\n%b\n  },\n  "autoUpdatesChannel": "latest"\n}\n' \
     "$ENV_BLOCK" > "$CFG"
 
-ok "~/.claude/settings.json (preserved existing values)"
+ok "~/.claude/settings.json"
 
-# ── wrapper script ────────────────────────────────────────────
+# ── aliases ───────────────────────────────────────────────────
 MARK="# claude-code-termux"
-WRAPPER_PATH="${PREFIX}/bin/claude-wrapper"
-CLAUDE_EXEC="${PREFIX}/bin/claude"
-
-# Copy wrapper script
-log "install wrapper script..."
-if [[ -f "$(dirname "$0")/claude-wrapper.sh" ]]; then
-    cp "$(dirname "$0")/claude-wrapper.sh" "$WRAPPER_PATH"
-    chmod +x "$WRAPPER_PATH"
-    ok "wrapper → $WRAPPER_PATH"
-else
-    # Fallback: buat wrapper inline
-    cat > "$WRAPPER_PATH" << 'WRAPPEREOF'
-#!/data/data/com.termux/files/usr/bin/bash
-CLAUDE_BINARY="/data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/claude"
-INSTALLER_URL="https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh"
-
-case "$1" in
-  --update|-u|update)
-    echo "🔄 Updating Claude Code..."
-    curl -fsSL "$INSTALLER_URL" | bash
-    ;;
-  --help|-h)
-    echo "Usage: claude [command]"
-    echo "  claude              Start Claude Code"
-    echo "  claude --update     Update ke versi terbaru"
-    echo "  claude --version    Show version"
-    ;;
-  *)
-    exec grun "$CLAUDE_BINARY" "${@}"
-    ;;
-esac
-WRAPPEREOF
-    chmod +x "$WRAPPER_PATH"
-    ok "inline wrapper → $WRAPPER_PATH"
-fi
-
-# Create executable
-ln -sf "$WRAPPER_PATH" "$CLAUDE_EXEC" 2>/dev/null || cp "$WRAPPER_PATH" "$CLAUDE_EXEC"
-chmod +x "$CLAUDE_EXEC"
-ok "claude executable → $CLAUDE_EXEC"
-
-# Add to PATH in rc files
+ALIAS_LINE="alias claude='grun ${CLAUDE_BIN}'"
 TMPDIR_LINE="export TMPDIR=\"\${TMPDIR:-${PREFIX}/tmp}\""
-PATH_LINE="export PATH=\"\${PATH}:${PREFIX}/bin\""
 
 for rc in "$BASHRC" "$ZSHRC"; do
     [[ -f "$rc" ]] || touch "$rc"
     grep -q "$MARK" "$rc" && sed -i "/$MARK/,/^$/d" "$rc"
-    printf '\n%s\n%s\n%s\n' "$MARK" "$TMPDIR_LINE" "$PATH_LINE" >> "$rc"
+    printf '\n%s\n%s\n%s\n' "$MARK" "$TMPDIR_LINE" "$ALIAS_LINE" >> "$rc"
 done
 
-ok "PATH updated → ~/.bashrc & ~/.zshrc"
+ok "alias 'claude' → ~/.bashrc & ~/.zshrc"
 
 # apply ke session ini
 export TMPDIR="${PREFIX}/tmp"
-export PATH="${PATH}:${PREFIX}/bin"
+# shellcheck disable=SC2139
+alias claude="grun ${CLAUDE_BIN}"
 
 # ── smoke test ────────────────────────────────────────────────
 sep "Smoke test"
@@ -342,7 +271,6 @@ printf "${NC}\n"
 [[ -n "$BASE_URL" ]] \
     && printf "  ${BLD}URL  :${NC} %s\n" "$BASE_URL"
 printf "  ${BLD}Model:${NC} %s\n\n" "$MODEL"
-printf "  ${DIM}source ~/.bashrc${NC}    ← load ke session ini\n"
-printf "  ${CYN}claude${NC}              ← jalankan\n"
-printf "  ${CYN}claude --update${NC}     ← update ke versi terbaru\n\n"
+printf "  ${DIM}source ~/.bashrc${NC}    ← load alias ke session ini\n"
+printf "  ${CYN}claude${NC}              ← jalankan\n\n"
 printf "  ${DIM}Jika ada masalah: bash install.sh lagi, atau cek TROUBLESHOOTING.md${NC}\n\n"

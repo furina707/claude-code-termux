@@ -91,50 +91,13 @@ Atau edit langsung `~/.claude/settings.json`:
 
 ---
 
-## Update Claude Code
+## Update
 
-Kalau Claude Code ada update, ada 3 opsi:
+Re-run installer:
 
-### Opsi 1: CLI command (Recommended)
-```bash
-claude --update
-```
-Ini akan download update terbaru dan re-apply patch secara otomatis.
-
-### Opsi 2: Re-run installer
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash
 ```
-Ini akan:
-- Download binary terbaru
-- Update semua package
-- Re-apply patch platform
-
-### Opsi 3: Manual update via npm
-```bash
-npm install -g @anthropic-ai/claude-code@latest @anthropic-ai/claude-code-linux-arm64@latest
-```
-Setelah ini, patch ulang platform:
-```bash
-sed -i "s/const platform = process.platform/const platform = process.platform === 'android' ? 'linux' : process.platform/" /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs
-
-sed -i "s/const platform = process.platform/const platform = process.platform === 'android' ? 'linux' : process.platform/" /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code/install.cjs
-```
-
-### Cek versi sekarang
-```bash
-claude --version
-```
-
-### Kalau update gagal
-1. Uninstall dulu:
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/uninstall.sh | bash
-   ```
-2. Install ulang:
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash
-   ```
 
 ---
 

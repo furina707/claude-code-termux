@@ -6,14 +6,9 @@
 source ~/.bashrc
 ```
 
-Kalau masih gagal, cek PATH:
+Kalau masih gagal:
 ```bash
-export PATH="${PATH}:/data/data/com.termux/files/usr/bin"
-```
-
-Atau jalankan langsung:
-```bash
-/data/data/com.termux/files/usr/bin/claude --version
+alias claude="grun /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/claude"
 ```
 
 ---
@@ -80,59 +75,10 @@ Lakukan hal yang sama di `install.cjs`.
 
 ## Setelah `pkg upgrade`, claude rusak
 
-Upgrade bisa overwrite node_modules. Re-run installer:
-```bash
-curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash
-```
-
----
-
-## Update gagal / binary error
-
-Kalau setelah update muncul error kayak:
-- `Illegal instruction`
-- `Segmentation fault`
-- Binary tidak ditemukan
-
-Solusi:
-1. Cek versi yang terinstall:
-   ```bash
-   ls /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/
-   ```
-2. Re-run installer:
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash
-   ```
-3. Kalau masih gagal, uninstall dulu lalu install ulang:
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/uninstall.sh | bash
-   curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash
-   ```
-
----
-
-## Setelah update, perlu setup ulang?
-
-Tidak perlu. Settings lo tersimpan di `~/.claude/settings.json` —installer tidak akan overwrite API key lo.
-
-Tapi perlu re-run installeragar patch platform terapply ke versi baru.
+Upgrade bisa overwrite node_modules. Re-run installer.
 
 ---
 
 ## Lambat / hang saat pertama launch
 
 Normal — glibc-runner perlu init pertama kali. Tunggu ~5 detik.
-
----
-
-## Update via CLI
-
-Cara termudah update Claude Code:
-```bash
-claude --update
-```
-
-Atau pakai installer langsung:
-```bash
-curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash
-```
