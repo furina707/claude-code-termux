@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Termux</title>
+<meta name="description" content="Run Claude Code natively on Android ARM64 with glibc-runner — no Ubuntu, no emulator.">
+<meta property="og:title" content="Claude Code Termux">
+<meta property="og:description" content="Native Claude Code on Android — one command install, full performance.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050a05;--surface:#0a110a;--border:#0f1a0f;
+  --green:#00ff88;--green-dim:rgba(0,255,136,0.1);--green-border:rgba(0,255,136,0.25);
+  --red:#ff4466;--red-dim:rgba(255,68,102,0.1);--red-border:rgba(255,68,102,0.25);
+  --text:#ffffff;--muted:#7788aa;--faint:#2a4a2a;--dimmer:#1a2a1a;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column}
+
+/* ── top bar ─────────────────────────── */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 28px;border-bottom:1px solid var(--border);flex-shrink:0}
+#logo{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--faint);letter-spacing:1px}
+#counter{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint)}
+#lang-btns{display:flex;gap:4px}
+.lang-btn{font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--dimmer);background:transparent;color:#3a5a3a;cursor:pointer;transition:all .15s}
+.lang-btn.active{background:var(--green-dim);border-color:var(--green-border);color:var(--green)}
+
+/* ── slide area ──────────────────────── */
+#stage{flex:1;position:relative;overflow:hidden}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 64px;opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;pointer-events:none}
+.slide.active{opacity:1;transform:none;pointer-events:all}
+
+/* ── bottom nav ──────────────────────── */
+#nav{display:flex;align-items:center;justify-content:center;gap:20px;padding:14px 28px;border-top:1px solid var(--border);flex-shrink:0}
+.nav-btn{font-family:'JetBrains Mono',monospace;font-size:12px;padding:7px 22px;border-radius:8px;border:1px solid;cursor:pointer;background:transparent;transition:all .15s}
+.nav-btn:disabled{border-color:var(--dimmer);color:var(--dimmer);cursor:default}
+.nav-btn.prev:not(:disabled){border-color:#1a3a1a;color:#3a6a3a}
+.nav-btn.next:not(:disabled){border-color:var(--green-border);color:var(--green);background:var(--green-dim)}
+#dots{display:flex;gap:6px;align-items:center}
+.dot{height:6px;border-radius:3px;border:none;cursor:pointer;background:#1a3a1a;transition:all .2s;width:6px;padding:0}
+.dot.active{background:var(--green);width:24px}
+
+/* ── typography helpers ──────────────── */
+.tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:4px;color:var(--green);margin-bottom:20px;opacity:.8}
+.tag.red{color:var(--red)}
+h1{font-size:68px;font-weight:800;line-height:1;letter-spacing:-3px;color:var(--text)}
+h1 .sub{display:block;font-family:'JetBrains Mono',monospace;font-size:34px;color:var(--green);font-weight:700;margin-top:4px;letter-spacing:-1px}
+h2{font-size:42px;font-weight:800;line-height:1.15;letter-spacing:-1.5px;color:var(--text);margin-bottom:40px;white-space:pre-line}
+.desc{font-size:17px;color:var(--muted);max-width:520px;line-height:1.7;white-space:pre-line;margin:24px 0 36px}
+.cta-pill{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--green);background:var(--green-dim);padding:10px 20px;border-radius:6px;border:1px solid var(--green-border);display:inline-block}
+
+/* ── cover centered ──────────────────── */
+.slide.cover{align-items:center;text-align:center}
+.slide.cover .grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(0,255,136,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.03) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+
+/* ── items list ──────────────────────── */
+.items{display:flex;flex-direction:column;gap:18px}
+.item{display:flex;gap:18px;align-items:flex-start}
+.item-num{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:12px}
+.item-num.red{background:var(--red-dim);border:1px solid var(--red-border);color:var(--red)}
+.item-num.green{background:var(--green-dim);border:1px solid var(--green-border);font-size:16px}
+.item-title{font-weight:700;font-size:15px;margin-bottom:5px}
+.item-title.green{color:var(--green)}
+.item-title.white{color:var(--text)}
+.item-desc{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* ── arch chain ──────────────────────── */
+.chain{display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-bottom:32px}
+.chain-node{background:var(--green-dim);border:1px solid var(--green-border);border-radius:12px;padding:16px 22px;text-align:center;min-width:130px}
+.chain-node .cn{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--green);font-weight:700;margin-bottom:5px}
+.chain-node .cs{font-size:11px;color:#445566;line-height:1.4}
+.chain-arrow{padding:0 10px;color:#334455;font-size:20px;font-family:monospace}
+.arch-note{font-size:13px;color:#445566;font-style:italic}
+
+/* ── install ─────────────────────────── */
+.code-block{background:#0a0f0a;border:1px solid #1a2a1a;border-radius:12px;padding:18px 22px;margin-bottom:28px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green);line-height:1.7;word-break:break-all}
+.code-block .prompt{color:#445544}
+.steps-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px}
+.step-row{display:flex;align-items:center;gap:10px}
+.step-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);opacity:.5;min-width:20px}
+.step-text{font-size:12px;color:var(--muted)}
+
+/* ── compare table ───────────────────── */
+table{width:100%;border-collapse:collapse}
+th{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;padding:8px 14px;border-bottom:1px solid var(--border);text-align:center}
+th:first-child{text-align:left}
+th.hl{color:var(--green)}
+th.dim{color:#445566}
+td{font-size:13px;color:#4a5568;text-align:center;padding:11px 14px;border-bottom:1px solid #0a120a}
+td:first-child{font-family:'JetBrains Mono',monospace;font-size:11px;color:#445566;text-align:left}
+td.hl{color:var(--text);font-weight:700}
+tr:nth-child(even){background:rgba(0,255,136,.02)}
+
+/* ── end ─────────────────────────────── */
+.slide.end{align-items:center;text-align:center}
+.slide.end h2{font-size:52px;margin-bottom:32px}
+.links{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:32px}
+.link-pill{font-family:'JetBrains Mono',monospace;font-size:11px;color:#334455;background:rgba(255,255,255,.02);padding:9px 16px;border-radius:8px;border:1px solid #1a2a2a}
+.link-pill span{color:#556677;margin-right:6px}
+
+@media(max-width:700px){
+  .slide{padding:0 24px}
+  h1{font-size:44px}h1 .sub{font-size:22px}
+  h2{font-size:28px}
+  .steps-grid{grid-template-columns:1fr}
+  .chain{gap:4px}.chain-node{min-width:100px;padding:10px 12px}
+}
+</style>
+</head>
+<body>
+
+<!-- top bar -->
+<div id="topbar">
+  <div id="logo">claude-code-termux</div>
+  <div id="lang-btns">
+    <button class="lang-btn active" onclick="setLang('id')">ID</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" onclick="setLang('zh')">中文</button>
+    <button class="lang-btn" onclick="setLang('ja')">日本語</button>
+  </div>
+  <div id="counter">01 / 07</div>
+</div>
+
+<!-- stage -->
+<div id="stage">
+
+  <!-- ══ ID ══════════════════════════════════════════════════ -->
+
+  <div class="slide cover active" data-lang="id" data-idx="0">
+    <div class="grid-bg"></div>
+    <div class="tag">Open Source · ARM64 · Android</div>
+    <h1>Claude Code<span class="sub">/termux</span></h1>
+    <p class="desc">Jalankan Claude Code langsung di Android —<br>tanpa Ubuntu, tanpa emulator, tanpa cloud VM.</p>
+    <div class="cta-pill">github.com/DamnSit/claude-code-termux</div>
+  </div>
+
+  <div class="slide" data-lang="id" data-idx="1">
+    <div class="tag red">Masalah</div>
+    <h2>Claude Code tidak jalan<br>di Android</h2>
+    <div class="items">
+      <div class="item"><div class="item-num red">01</div><div><div class="item-title white">Binary glibc</div><div class="item-desc">Binary resmi Anthropic dikompilasi untuk glibc Linux — Android pakai Bionic libc yang beda ABI.</div></div></div>
+      <div class="item"><div class="item-num red">02</div><div><div class="item-title white">/tmp tidak ada</div><div class="item-desc">Claude Code hardcode /tmp untuk IPC & socket. Di Android path ini tidak tersedia.</div></div></div>
+      <div class="item"><div class="item-num red">03</div><div><div class="item-title white">Versi lama = terbatas</div><div class="item-desc">Workaround selama ini: pin ke v2.1.112 (JS only). Latest version tidak bisa jalan sama sekali.</div></div></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="id" data-idx="2">
+    <div class="tag">Solusi</div>
+    <h2>Native binary +<br>glibc-runner</h2>
+    <div class="items">
+      <div class="item"><div class="item-num green">⚡</div><div><div class="item-title green">glibc-runner</div><div class="item-desc">Jalankan binary glibc resmi langsung di Bionic via grun — tanpa full Linux environment.</div></div></div>
+      <div class="item"><div class="item-num green">🔧</div><div><div class="item-title green">Platform patch</div><div class="item-desc">Patch cli-wrapper.cjs & install.cjs: android → linux. Binary ARM64 resmi langsung terdeteksi.</div></div></div>
+      <div class="item"><div class="item-num green">🚀</div><div><div class="item-title green">Latest version</div><div class="item-desc">Bukan versi lama. Binary terbaru dari Anthropic, performa native penuh.</div></div></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="id" data-idx="3">
+    <div class="tag">Arsitektur</div>
+    <h2>Cara kerjanya</h2>
+    <div class="chain">
+      <div class="chain-node"><div class="cn">claude</div><div class="cs">alias di shell</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">grun</div><div class="cs">glibc-runner</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">linux-arm64</div><div class="cs">official binary</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">API</div><div class="cs">Anthropic / custom</div></div>
+    </div>
+    <div class="arch-note">Semua layer berjalan native di Termux tanpa VM atau container.</div>
+  </div>
+
+  <div class="slide" data-lang="id" data-idx="4">
+    <div class="tag">Install</div>
+    <h2>Satu command.<br>Selesai.</h2>
+    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    <div class="steps-grid">
+      <div class="step-row"><span class="step-num">01</span><span class="step-text">Update packages & install deps</span></div>
+      <div class="step-row"><span class="step-num">02</span><span class="step-text">Install Claude Code + ARM64 binary</span></div>
+      <div class="step-row"><span class="step-num">03</span><span class="step-text">Patch platform detection otomatis</span></div>
+      <div class="step-row"><span class="step-num">04</span><span class="step-text">Install glibc-runner</span></div>
+      <div class="step-row"><span class="step-num">05</span><span class="step-text">Setup API key & model interaktif</span></div>
+      <div class="step-row"><span class="step-num">06</span><span class="step-text">Set alias di .bashrc & .zshrc</span></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="id" data-idx="5">
+    <div class="tag">Perbandingan</div>
+    <h2>vs setup lain</h2>
+    <table>
+      <thead><tr><th class="dim"></th><th class="hl">Repo ini</th><th class="dim">Pin v2.1.112</th><th class="dim">proot Ubuntu</th></tr></thead>
+      <tbody>
+        <tr><td>Binary</td><td class="hl">Native ARM64</td><td>JS (cli.js)</td><td>x86_64 emu</td></tr>
+        <tr><td>Versi</td><td class="hl">Latest</td><td>Lama (frozen)</td><td>Latest</td></tr>
+        <tr><td>Performa</td><td class="hl">🔥 Native</td><td>⚠️ Node.js</td><td>🐢 Emulasi</td></tr>
+        <tr><td>Ubuntu</td><td class="hl">❌ Tidak perlu</td><td>❌ Tidak perlu</td><td>✅ Dibutuhkan</td></tr>
+        <tr><td>Setup</td><td class="hl">1 command</td><td>Manual</td><td>Manual + besar</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="slide end" data-lang="id" data-idx="6">
+    <div class="grid-bg"></div>
+    <div class="tag">Android · ARM64 · No root · No emulator</div>
+    <h2>Mulai sekarang</h2>
+    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    <div class="links">
+      <div class="link-pill"><span>GitHub</span>github.com/DamnSit/claude-code-termux</div>
+      <div class="link-pill"><span>Troubleshooting</span>TROUBLESHOOTING.md</div>
+    </div>
+  </div>
+
+  <!-- ══ EN ══════════════════════════════════════════════════ -->
+
+  <div class="slide cover" data-lang="en" data-idx="0">
+    <div class="grid-bg"></div>
+    <div class="tag">Open Source · ARM64 · Android</div>
+    <h1>Claude Code<span class="sub">/termux</span></h1>
+    <p class="desc">Run Claude Code natively on Android —<br>no Ubuntu, no emulator, no cloud VM.</p>
+    <div class="cta-pill">github.com/DamnSit/claude-code-termux</div>
+  </div>
+
+  <div class="slide" data-lang="en" data-idx="1">
+    <div class="tag red">The Problem</div>
+    <h2>Claude Code doesn't run<br>on Android</h2>
+    <div class="items">
+      <div class="item"><div class="item-num red">01</div><div><div class="item-title white">glibc binary</div><div class="item-desc">Anthropic's binary is compiled for glibc Linux — Android uses Bionic libc with a different ABI.</div></div></div>
+      <div class="item"><div class="item-num red">02</div><div><div class="item-title white">No /tmp</div><div class="item-desc">Claude Code hardcodes /tmp for IPC & sockets. That path doesn't exist on Android.</div></div></div>
+      <div class="item"><div class="item-num red">03</div><div><div class="item-title white">Old versions only</div><div class="item-desc">The workaround was pinning to v2.1.112 (JS only). Latest versions don't run at all.</div></div></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="en" data-idx="2">
+    <div class="tag">Solution</div>
+    <h2>Native binary +<br>glibc-runner</h2>
+    <div class="items">
+      <div class="item"><div class="item-num green">⚡</div><div><div class="item-title green">glibc-runner</div><div class="item-desc">Run the official glibc binary directly on Bionic via grun — no full Linux environment needed.</div></div></div>
+      <div class="item"><div class="item-num green">🔧</div><div><div class="item-title green">Platform patch</div><div class="item-desc">Patch cli-wrapper.cjs & install.cjs: android → linux. Official ARM64 binary gets detected correctly.</div></div></div>
+      <div class="item"><div class="item-num green">🚀</div><div><div class="item-title green">Latest version</div><div class="item-desc">Not some old frozen build. Latest Anthropic binary, full native performance.</div></div></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="en" data-idx="3">
+    <div class="tag">Architecture</div>
+    <h2>How it works</h2>
+    <div class="chain">
+      <div class="chain-node"><div class="cn">claude</div><div class="cs">shell alias</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">grun</div><div class="cs">glibc-runner</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">linux-arm64</div><div class="cs">official binary</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">API</div><div class="cs">Anthropic / custom</div></div>
+    </div>
+    <div class="arch-note">All layers run natively in Termux — no VM, no container.</div>
+  </div>
+
+  <div class="slide" data-lang="en" data-idx="4">
+    <div class="tag">Install</div>
+    <h2>One command.<br>Done.</h2>
+    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    <div class="steps-grid">
+      <div class="step-row"><span class="step-num">01</span><span class="step-text">Update packages & install deps</span></div>
+      <div class="step-row"><span class="step-num">02</span><span class="step-text">Install Claude Code + ARM64 binary</span></div>
+      <div class="step-row"><span class="step-num">03</span><span class="step-text">Auto-patch platform detection</span></div>
+      <div class="step-row"><span class="step-num">04</span><span class="step-text">Install glibc-runner</span></div>
+      <div class="step-row"><span class="step-num">05</span><span class="step-text">Interactive API key & model setup</span></div>
+      <div class="step-row"><span class="step-num">06</span><span class="step-text">Set alias in .bashrc & .zshrc</span></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="en" data-idx="5">
+    <div class="tag">Comparison</div>
+    <h2>vs other setups</h2>
+    <table>
+      <thead><tr><th class="dim"></th><th class="hl">This repo</th><th class="dim">Pin v2.1.112</th><th class="dim">proot Ubuntu</th></tr></thead>
+      <tbody>
+        <tr><td>Binary</td><td class="hl">Native ARM64</td><td>JS (cli.js)</td><td>x86_64 emulated</td></tr>
+        <tr><td>Version</td><td class="hl">Latest</td><td>Frozen old</td><td>Latest</td></tr>
+        <tr><td>Performance</td><td class="hl">🔥 Native</td><td>⚠️ Node.js</td><td>🐢 Emulated</td></tr>
+        <tr><td>Ubuntu</td><td class="hl">❌ Not needed</td><td>❌ Not needed</td><td>✅ Required</td></tr>
+        <tr><td>Setup</td><td class="hl">1 command</td><td>Manual</td><td>Manual + large</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="slide end" data-lang="en" data-idx="6">
+    <div class="grid-bg"></div>
+    <div class="tag">Android · ARM64 · No root · No emulator</div>
+    <h2>Get started</h2>
+    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    <div class="links">
+      <div class="link-pill"><span>GitHub</span>github.com/DamnSit/claude-code-termux</div>
+      <div class="link-pill"><span>Troubleshooting</span>TROUBLESHOOTING.md</div>
+    </div>
+  </div>
+
+  <!-- ══ ZH ══════════════════════════════════════════════════ -->
+
+  <div class="slide cover" data-lang="zh" data-idx="0">
+    <div class="grid-bg"></div>
+    <div class="tag">开源 · ARM64 · Android</div>
+    <h1>Claude Code<span class="sub">/termux</span></h1>
+    <p class="desc">在 Android 上原生运行 Claude Code —<br>无需 Ubuntu，无需模拟器，无需云服务器。</p>
+    <div class="cta-pill">github.com/DamnSit/claude-code-termux</div>
+  </div>
+
+  <div class="slide" data-lang="zh" data-idx="1">
+    <div class="tag red">问题</div>
+    <h2>Claude Code 无法在<br>Android 上运行</h2>
+    <div class="items">
+      <div class="item"><div class="item-num red">01</div><div><div class="item-title white">glibc 二进制</div><div class="item-desc">Anthropic 官方二进制为 glibc Linux 编译 — Android 使用 Bionic libc，ABI 不同。</div></div></div>
+      <div class="item"><div class="item-num red">02</div><div><div class="item-title white">无 /tmp 路径</div><div class="item-desc">Claude Code 硬编码 /tmp 用于 IPC，该路径在 Android 上不存在。</div></div></div>
+      <div class="item"><div class="item-num red">03</div><div><div class="item-title white">只能用旧版本</div><div class="item-desc">以往解决方案是锁定 v2.1.112（纯 JS）。最新版本完全无法运行。</div></div></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="zh" data-idx="2">
+    <div class="tag">解决方案</div>
+    <h2>原生二进制 +<br>glibc-runner</h2>
+    <div class="items">
+      <div class="item"><div class="item-num green">⚡</div><div><div class="item-title green">glibc-runner</div><div class="item-desc">通过 grun 在 Bionic 上直接运行官方 glibc 二进制 — 无需完整 Linux 环境。</div></div></div>
+      <div class="item"><div class="item-num green">🔧</div><div><div class="item-title green">平台补丁</div><div class="item-desc">修补 cli-wrapper.cjs 和 install.cjs：android → linux。官方 ARM64 二进制即可正确被识别。</div></div></div>
+      <div class="item"><div class="item-num green">🚀</div><div><div class="item-title green">最新版本</div><div class="item-desc">不是旧的冻结版本，最新 Anthropic 二进制，完整原生性能。</div></div></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="zh" data-idx="3">
+    <div class="tag">架构</div>
+    <h2>运行原理</h2>
+    <div class="chain">
+      <div class="chain-node"><div class="cn">claude</div><div class="cs">Shell 别名</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">grun</div><div class="cs">glibc-runner</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">linux-arm64</div><div class="cs">官方二进制</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">API</div><div class="cs">Anthropic / 自定义</div></div>
+    </div>
+    <div class="arch-note">所有层在 Termux 中原生运行 — 无虚拟机，无容器。</div>
+  </div>
+
+  <div class="slide" data-lang="zh" data-idx="4">
+    <div class="tag">安装</div>
+    <h2>一条命令，<br>搞定。</h2>
+    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    <div class="steps-grid">
+      <div class="step-row"><span class="step-num">01</span><span class="step-text">更新软件包并安装依赖</span></div>
+      <div class="step-row"><span class="step-num">02</span><span class="step-text">安装 Claude Code + ARM64 二进制</span></div>
+      <div class="step-row"><span class="step-num">03</span><span class="step-text">自动修补平台检测</span></div>
+      <div class="step-row"><span class="step-num">04</span><span class="step-text">安装 glibc-runner</span></div>
+      <div class="step-row"><span class="step-num">05</span><span class="step-text">交互式设置 API 密钥和模型</span></div>
+      <div class="step-row"><span class="step-num">06</span><span class="step-text">在 .bashrc 和 .zshrc 中设置别名</span></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="zh" data-idx="5">
+    <div class="tag">对比</div>
+    <h2>与其他方案对比</h2>
+    <table>
+      <thead><tr><th class="dim"></th><th class="hl">本仓库</th><th class="dim">锁定 v2.1.112</th><th class="dim">proot Ubuntu</th></tr></thead>
+      <tbody>
+        <tr><td>二进制</td><td class="hl">原生 ARM64</td><td>JS (cli.js)</td><td>x86_64 模拟</td></tr>
+        <tr><td>版本</td><td class="hl">最新</td><td>旧版（冻结）</td><td>最新</td></tr>
+        <tr><td>性能</td><td class="hl">🔥 原生</td><td>⚠️ Node.js</td><td>🐢 模拟</td></tr>
+        <tr><td>Ubuntu</td><td class="hl">❌ 不需要</td><td>❌ 不需要</td><td>✅ 必需</td></tr>
+        <tr><td>安装</td><td class="hl">1 条命令</td><td>手动</td><td>手动 + 大</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="slide end" data-lang="zh" data-idx="6">
+    <div class="grid-bg"></div>
+    <div class="tag">Android · ARM64 · 无需 root · 无需模拟器</div>
+    <h2>立即开始</h2>
+    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    <div class="links">
+      <div class="link-pill"><span>GitHub</span>github.com/DamnSit/claude-code-termux</div>
+      <div class="link-pill"><span>问题排查</span>TROUBLESHOOTING.md</div>
+    </div>
+  </div>
+
+  <!-- ══ JA ══════════════════════════════════════════════════ -->
+
+  <div class="slide cover" data-lang="ja" data-idx="0">
+    <div class="grid-bg"></div>
+    <div class="tag">オープンソース · ARM64 · Android</div>
+    <h1>Claude Code<span class="sub">/termux</span></h1>
+    <p class="desc">AndroidでClaude Codeをネイティブ実行 —<br>Ubuntu不要、エミュレータ不要。</p>
+    <div class="cta-pill">github.com/DamnSit/claude-code-termux</div>
+  </div>
+
+  <div class="slide" data-lang="ja" data-idx="1">
+    <div class="tag red">問題</div>
+    <h2>Claude Codeが<br>Androidで動かない</h2>
+    <div class="items">
+      <div class="item"><div class="item-num red">01</div><div><div class="item-title white">glibcバイナリ</div><div class="item-desc">AnthropicのバイナリはglibcのLinux向けにコンパイル済み — AndroidのBionicとはABIが異なります。</div></div></div>
+      <div class="item"><div class="item-num red">02</div><div><div class="item-title white">/tmpが存在しない</div><div class="item-desc">Claude Codeは/tmpをハードコード。Androidには存在しないためIPC通信が失敗します。</div></div></div>
+      <div class="item"><div class="item-num red">03</div><div><div class="item-title white">古いバージョンのみ</div><div class="item-desc">v2.1.112（JS専用）に固定するしかなかった。最新版は全く動作しません。</div></div></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="ja" data-idx="2">
+    <div class="tag">解決策</div>
+    <h2>ネイティブバイナリ +<br>glibc-runner</h2>
+    <div class="items">
+      <div class="item"><div class="item-num green">⚡</div><div><div class="item-title green">glibc-runner</div><div class="item-desc">grunを使ってBionicで直接官方glibcバイナリを実行 — フルLinux環境は不要。</div></div></div>
+      <div class="item"><div class="item-num green">🔧</div><div><div class="item-title green">プラットフォームパッチ</div><div class="item-desc">cli-wrapper.cjsとinstall.cjsをパッチ：android → linux。ARM64バイナリが正しく認識されます。</div></div></div>
+      <div class="item"><div class="item-num green">🚀</div><div><div class="item-title green">最新バージョン</div><div class="item-desc">古い凍結バージョンではなく、最新Anthropicバイナリでフルネイティブ性能。</div></div></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="ja" data-idx="3">
+    <div class="tag">アーキテクチャ</div>
+    <h2>仕組み</h2>
+    <div class="chain">
+      <div class="chain-node"><div class="cn">claude</div><div class="cs">シェルエイリアス</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">grun</div><div class="cs">glibc-runner</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">linux-arm64</div><div class="cs">公式バイナリ</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node"><div class="cn">API</div><div class="cs">Anthropic / カスタム</div></div>
+    </div>
+    <div class="arch-note">全レイヤーがTermuxでネイティブ実行 — VMもコンテナも不要。</div>
+  </div>
+
+  <div class="slide" data-lang="ja" data-idx="4">
+    <div class="tag">インストール</div>
+    <h2>コマンド一つ。<br>完了。</h2>
+    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    <div class="steps-grid">
+      <div class="step-row"><span class="step-num">01</span><span class="step-text">パッケージ更新と依存関係インストール</span></div>
+      <div class="step-row"><span class="step-num">02</span><span class="step-text">Claude Code + ARM64バイナリのインストール</span></div>
+      <div class="step-row"><span class="step-num">03</span><span class="step-text">プラットフォーム検出の自動パッチ</span></div>
+      <div class="step-row"><span class="step-num">04</span><span class="step-text">glibc-runnerのインストール</span></div>
+      <div class="step-row"><span class="step-num">05</span><span class="step-text">APIキー・モデルの対話設定</span></div>
+      <div class="step-row"><span class="step-num">06</span><span class="step-text">.bashrcと.zshrcにエイリアス設定</span></div>
+    </div>
+  </div>
+
+  <div class="slide" data-lang="ja" data-idx="5">
+    <div class="tag">比較</div>
+    <h2>他のセットアップとの比較</h2>
+    <table>
+      <thead><tr><th class="dim"></th><th class="hl">このリポジトリ</th><th class="dim">v2.1.112固定</th><th class="dim">proot Ubuntu</th></tr></thead>
+      <tbody>
+        <tr><td>バイナリ</td><td class="hl">ネイティブARM64</td><td>JS (cli.js)</td><td>x86_64エミュ</td></tr>
+        <tr><td>バージョン</td><td class="hl">最新</td><td>旧版（凍結）</td><td>最新</td></tr>
+        <tr><td>パフォーマンス</td><td class="hl">🔥 ネイティブ</td><td>⚠️ Node.js</td><td>🐢 エミュ</td></tr>
+        <tr><td>Ubuntu</td><td class="hl">❌ 不要</td><td>❌ 不要</td><td>✅ 必要</td></tr>
+        <tr><td>セットアップ</td><td class="hl">1コマンド</td><td>手動</td><td>手動 + 大容量</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="slide end" data-lang="ja" data-idx="6">
+    <div class="grid-bg"></div>
+    <div class="tag">Android · ARM64 · root不要 · エミュレータ不要</div>
+    <h2>今すぐ始める</h2>
+    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    <div class="links">
+      <div class="link-pill"><span>GitHub</span>github.com/DamnSit/claude-code-termux</div>
+      <div class="link-pill"><span>トラブル</span>TROUBLESHOOTING.md</div>
+    </div>
+  </div>
+
+</div><!-- /stage -->
+
+<!-- nav -->
+<div id="nav">
+  <button class="nav-btn prev" id="btn-prev" onclick="go(-1)" disabled>← prev</button>
+  <div id="dots"></div>
+  <button class="nav-btn next" id="btn-next" onclick="go(1)">next →</button>
+</div>
+
+<script>
+const TOTAL = 7;
+let lang = 'id', idx = 0;
+
+function slides(l){ return document.querySelectorAll(`.slide[data-lang="${l}"]`); }
+function allSlides(){ return document.querySelectorAll('.slide'); }
+
+function render(){
+  allSlides().forEach(s => s.classList.remove('active'));
+  const s = document.querySelector(`.slide[data-lang="${lang}"][data-idx="${idx}"]`);
+  if(s) s.classList.add('active');
+
+  document.getElementById('counter').textContent =
+    String(idx+1).padStart(2,'0') + ' / ' + String(TOTAL).padStart(2,'0');
+
+  document.getElementById('btn-prev').disabled = idx === 0;
+  document.getElementById('btn-next').disabled = idx === TOTAL-1;
+
+  const dots = document.getElementById('dots');
+  dots.innerHTML = '';
+  for(let i=0;i<TOTAL;i++){
+    const d = document.createElement('button');
+    d.className = 'dot' + (i===idx?' active':'');
+    d.onclick = ()=>{ idx=i; render(); };
+    dots.appendChild(d);
+  }
+
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.classList.toggle('active', b.textContent.trim().toLowerCase()===lang||
+      (b.textContent.trim()==='中文'&&lang==='zh')||
+      (b.textContent.trim()==='日本語'&&lang==='ja'));
+  });
+}
+
+function go(d){ idx = Math.max(0,Math.min(TOTAL-1,idx+d)); render(); }
+
+function setLang(l){ lang=l; idx=0; render(); }
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') go(1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') go(-1);
+});
+
+render();
+</script>
+</body>
+</html>
