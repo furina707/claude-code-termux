@@ -8,9 +8,21 @@ Automatic installer that handles all setup: deps, binary, platform patch, glibc-
 
 ## Install
 
+**Shell version (default):**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash
 ```
+
+**Rust version (alternative):**
+```bash
+# Build dari PC:
+# 1. Clone repo
+# 2. cd rust-wrapper
+# 3. cargo build --release --target aarch64-unknown-linux-gnu
+# 4. Copy binary ke Termux: /data/data/com.termux/files/usr/bin/claude
+```
+
+Lihat [rust-wrapper/BUILD.md](rust-wrapper/BUILD.md) untuk detail build.
 
 After install:
 

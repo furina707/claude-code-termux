@@ -1,0 +1,13 @@
+[package]
+name = "claude-termux"
+version = "1.0.0"
+edition = "2021"
+description = "Claude Code Termux Wrapper in Rust"
+authors = ["DamnSit"]
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+crossterm = "0.27"
+anyhow = "1.0"
+tokio = { version = "1", features = ["process", "time"] }
