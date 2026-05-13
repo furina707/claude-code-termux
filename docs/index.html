@@ -176,15 +176,18 @@ tr:nth-child(even){background:rgba(0,255,136,.02)}
 
   <div class="slide" data-lang="id" data-idx="4">
     <div class="tag">Install</div>
-    <h2>Satu command.<br>Selesai.</h2>
-    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    <div class="steps-grid">
-      <div class="step-row"><span class="step-num">01</span><span class="step-text">Update packages & install deps</span></div>
-      <div class="step-row"><span class="step-num">02</span><span class="step-text">Install Claude Code + ARM64 binary</span></div>
-      <div class="step-row"><span class="step-num">03</span><span class="step-text">Patch platform detection otomatis</span></div>
-      <div class="step-row"><span class="step-num">04</span><span class="step-text">Install glibc-runner</span></div>
-      <div class="step-row"><span class="step-num">05</span><span class="step-text">Setup API key & model interaktif</span></div>
-      <div class="step-row"><span class="step-num">06</span><span class="step-text">Set alias di .bashrc & .zshrc</span></div>
+    <h2>Pilih cara install<br>yang kamu mau.</h2>
+    <div style="margin-bottom:20px">
+      <div class="item-title" style="color:var(--green)">Option 1: Shell (Recommended)</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div class="item-title" style="color:var(--green)">Option 2: NPM</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>pkg update && pkg install nodejs-lts && npm install -g @xurxuo/claude-code-termux</div>
+    </div>
+    <div>
+      <div class="item-title" style="color:var(--green)">Option 3: Rust Binary</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o $PREFIX/bin/claude && chmod +x $PREFIX/bin/claude</div>
     </div>
   </div>
 
@@ -261,15 +264,18 @@ tr:nth-child(even){background:rgba(0,255,136,.02)}
 
   <div class="slide" data-lang="en" data-idx="4">
     <div class="tag">Install</div>
-    <h2>One command.<br>Done.</h2>
-    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    <div class="steps-grid">
-      <div class="step-row"><span class="step-num">01</span><span class="step-text">Update packages & install deps</span></div>
-      <div class="step-row"><span class="step-num">02</span><span class="step-text">Install Claude Code + ARM64 binary</span></div>
-      <div class="step-row"><span class="step-num">03</span><span class="step-text">Auto-patch platform detection</span></div>
-      <div class="step-row"><span class="step-num">04</span><span class="step-text">Install glibc-runner</span></div>
-      <div class="step-row"><span class="step-num">05</span><span class="step-text">Interactive API key & model setup</span></div>
-      <div class="step-row"><span class="step-num">06</span><span class="step-text">Set alias in .bashrc & .zshrc</span></div>
+    <h2>Choose your<br>install method.</h2>
+    <div style="margin-bottom:20px">
+      <div class="item-title" style="color:var(--green)">Option 1: Shell (Recommended)</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div class="item-title" style="color:var(--green)">Option 2: NPM</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>pkg update && pkg install nodejs-lts && npm install -g @xurxuo/claude-code-termux</div>
+    </div>
+    <div>
+      <div class="item-title" style="color:var(--green)">Option 3: Rust Binary</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o $PREFIX/bin/claude && chmod +x $PREFIX/bin/claude</div>
     </div>
   </div>
 
@@ -346,15 +352,18 @@ tr:nth-child(even){background:rgba(0,255,136,.02)}
 
   <div class="slide" data-lang="zh" data-idx="4">
     <div class="tag">安装</div>
-    <h2>一条命令，<br>搞定。</h2>
-    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    <div class="steps-grid">
-      <div class="step-row"><span class="step-num">01</span><span class="step-text">更新软件包并安装依赖</span></div>
-      <div class="step-row"><span class="step-num">02</span><span class="step-text">安装 Claude Code + ARM64 二进制</span></div>
-      <div class="step-row"><span class="step-num">03</span><span class="step-text">自动修补平台检测</span></div>
-      <div class="step-row"><span class="step-num">04</span><span class="step-text">安装 glibc-runner</span></div>
-      <div class="step-row"><span class="step-num">05</span><span class="step-text">交互式设置 API 密钥和模型</span></div>
-      <div class="step-row"><span class="step-num">06</span><span class="step-text">在 .bashrc 和 .zshrc 中设置别名</span></div>
+    <h2>选择你的<br>安装方式。</h2>
+    <div style="margin-bottom:20px">
+      <div class="item-title" style="color:var(--green)">选项 1: Shell (推荐)</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div class="item-title" style="color:var(--green)">选项 2: NPM</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>pkg update && pkg install nodejs-lts && npm install -g @xurxuo/claude-code-termux</div>
+    </div>
+    <div>
+      <div class="item-title" style="color:var(--green)">选项 3: Rust 二进制</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o $PREFIX/bin/claude && chmod +x $PREFIX/bin/claude</div>
     </div>
   </div>
 
@@ -431,15 +440,18 @@ tr:nth-child(even){background:rgba(0,255,136,.02)}
 
   <div class="slide" data-lang="ja" data-idx="4">
     <div class="tag">インストール</div>
-    <h2>コマンド一つ。<br>完了。</h2>
-    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    <div class="steps-grid">
-      <div class="step-row"><span class="step-num">01</span><span class="step-text">パッケージ更新と依存関係インストール</span></div>
-      <div class="step-row"><span class="step-num">02</span><span class="step-text">Claude Code + ARM64バイナリのインストール</span></div>
-      <div class="step-row"><span class="step-num">03</span><span class="step-text">プラットフォーム検出の自動パッチ</span></div>
-      <div class="step-row"><span class="step-num">04</span><span class="step-text">glibc-runnerのインストール</span></div>
-      <div class="step-row"><span class="step-num">05</span><span class="step-text">APIキー・モデルの対話設定</span></div>
-      <div class="step-row"><span class="step-num">06</span><span class="step-text">.bashrcと.zshrcにエイリアス設定</span></div>
+    <h2>インストール方法<br>を選択。</h2>
+    <div style="margin-bottom:20px">
+      <div class="item-title" style="color:var(--green)">オプション 1: Shell (推奨)</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div class="item-title" style="color:var(--green)">オプション 2: NPM</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>pkg update && pkg install nodejs-lts && npm install -g @xurxuo/claude-code-termux</div>
+    </div>
+    <div>
+      <div class="item-title" style="color:var(--green)">オプション 3: Rustバイナリ</div>
+      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o $PREFIX/bin/claude && chmod +x $PREFIX/bin/claude</div>
     </div>
   </div>
 
