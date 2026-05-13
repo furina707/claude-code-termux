@@ -28,36 +28,30 @@ claude
 
 ## Install - Rust Version
 
-**Option 1: Pre-built Binary (Tidak perlu PC)**
-```bash
-# Download dari:
-# https://github.com/DamnSit/claude-code-termux/releases
+**1. Download binary dari:**
+https://github.com/DamnSit/claude-code-termux/releases
 
-# Copy ke Termux via ADB:
-adb push claude-termux /data/data/com.termux/files/usr/bin/claude
-adb shell chmod +x /data/data/com.termux/files/usr/bin/claude
+**2. Copy ke Termux:**
+```bash
+# Via ADB
+adb push claude-termux $PREFIX/bin/claude
+# ATAU copy manual dari file manager
+
+chmod +x $PREFIX/bin/claude
 ```
 
-**Option 2: Build dari Source (Perlu PC)**
+**3. Jalankan!**
 ```bash
-# 1. Clone repo
+claude
+```
+
+Binary akan auto-install dependencies kalau belum ada!
+
+**Build sendiri (optional):**
+```bash
 git clone https://github.com/DamnSit/claude-code-termux
 cd claude-code-termux/rust-wrapper
-
-# 2. Build (butuh Rust toolchain + gcc-aarch64-linux-gnu)
 cargo build --release --target aarch64-unknown-linux-gnu
-
-# 3. Copy ke Termux
-adb push target/aarch64-unknown-linux-gnu/release/claude-termux \
-  /data/data/com.termux/files/usr/bin/claude
-adb shell chmod +x /data/data/com.termux/files/usr/bin/claude
-```
-
-**Setelah install Rust version,还需要安装:**
-```bash
-# Install dependencies
-pkg install nodejs-lts grun
-npm install -g @anthropic-ai/claude-code @anthropic-ai/claude-code-linux-arm64
 ```
 
 Lihat [rust-wrapper/BUILD.md](rust-wrapper/BUILD.md) untuk detail build.
