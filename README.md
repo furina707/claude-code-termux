@@ -18,22 +18,47 @@ Claude Code is an AI coding assistant. This project lets you run it on your Andr
 
 ## Quick Install (Recommended)
 
-Copy and paste this in Termux:
+**Secure way** — verifies checksums before running:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install-secure.sh | bash
+```
+
+**Standard way** — downloads and runs directly:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash
 ```
 
-That's it! The installer will:
+The installer will:
 1. Install required packages (nodejs, grun)
 2. Download Claude Code
 3. Ask for your API key
+4. Secure your settings file (permissions: 600)
+
+---
+
+## Verify Before Running (Recommended)
+
+For extra security, verify the scripts first:
+
+```bash
+# 1. Download checksums
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/CHECKSUMS.txt -o CHECKSUMS.txt
+
+# 2. Download scripts
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh -o install.sh
+
+# 3. Verify checksums
+sha256sum -c CHECKSUMS.txt
+
+# 4. If verified, run installer
+bash install.sh
+```
 
 ---
 
 ## Alternative: Install via NPM
-
-If the quick install doesn't work, try this:
 
 ```bash
 pkg update && pkg install nodejs-lts
@@ -42,9 +67,9 @@ npm install -g @xurxuo/claude-code-termux
 
 ---
 
-## Alternative: Use Shell Wrapper (Recommended)
+## Alternative: Use Shell Wrapper Only
 
-This is a simple shell script that you can read and verify before running:
+If you just want the wrapper (no auto-install):
 
 ```bash
 # Download and review the script first
@@ -58,16 +83,11 @@ mv /tmp/claude-wrapper.sh $PREFIX/bin/claude
 chmod +x $PREFIX/bin/claude
 ```
 
-Benefits:
-- **Transparent** - anyone can read the code
-- **Auditable** - no black box binary
-- **Safe** - verify before running
-
 ---
 
-**⚠️ Avoid: Pre-compiled ELF Binary**
+## ⚠️ Avoid: Pre-compiled ELF Binary
 
-The `claude-termux` binary is a compiled ELF that cannot be easily audited. Use the shell wrapper instead.
+The `claude-termux` binary is a compiled ELF that cannot be easily audited. Use the shell scripts instead.
 
 ---
 
@@ -81,7 +101,8 @@ The `claude-termux` binary is a compiled ELF that cannot be easily audited. Use 
    export ANTHROPIC_API_KEY=sk-ant-your-key-here
    ```
 
-Or add it to your settings:
+Or add it to your settings (installer will ask):
+
 ```bash
 nano ~/.claude/settings.json
 ```
@@ -110,21 +131,10 @@ Add:
 
 This flag tells Claude Code to **skip all permission prompts** and run any tool/command automatically.
 
-**What it does:**
-- Claude can execute any shell command without asking first
-- Claude can read/write any file without asking
-- No confirmation needed for dangerous operations
-
 **⚠️ Risks (use with caution):**
 - Can accidentally delete important files
 - Can run harmful commands (like `rm -rf /`)
 - No protection against mistakes
-- Use only when you understand what you're doing
-
-**When to use:**
-- Running automated scripts
-- Batch operations you trust
-- When you're watching and can stop it if needed
 
 **Example:**
 ```bash
@@ -192,28 +202,26 @@ chmod +x $PREFIX/bin/claude
 
 ---
 
-## Security Audit
+## Security
 
-The shell wrapper is fully transparent. You can read and verify it before running.
+### What we do to protect you:
+- **Checksum verification** — verify scripts before running
+- **Secure file permissions** — settings.json protected with `chmod 600`
+- **JSON injection prevention** — use `jq` for safe JSON building
+- **No arbitrary code execution** — scripts only run documented commands
 
-### What it does (from source):
-- Checks if `grun` and `node` are installed
-- Runs `grun` or `node` to execute Claude Code
-- Handles `--update`, `--uninstall`, `--version`, `--help` commands
+### What we DON'T do:
+- Never download or run arbitrary code
+- Never write outside intended directories
+- Never execute hidden commands
+- Never log your API key
 
-### What it does NOT do:
-- Download or execute arbitrary code
-- Write to arbitrary filesystem
-- Modify your settings
-- Run any hidden commands
-
-### How to verify:
+### Audit the code yourself:
 ```bash
-# 1. Download and read the wrapper
+# Read all scripts
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | less
 curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/claude-wrapper.sh | less
-
-# 2. Verify it's just bash (no base64 encoded binaries)
-curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/claude-wrapper.sh | head -20
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/uninstall.sh | less
 ```
 
 ---
