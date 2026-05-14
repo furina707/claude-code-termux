@@ -322,7 +322,14 @@ ok "~/.claude/settings.json (permissions: 600)"
 MARK="# claude-code-termux"
 TMPDIR_LINE="export TMPDIR=\"\${TMPDIR:-${PREFIX}/tmp}\""
 
-# Create wrapper directly
+# Remove old symlink from npm (if exists)
+WRAPPER_DST="${PREFIX}/bin/claude"
+if [[ -L "$WRAPPER_DST" ]] || [[ -f "$WRAPPER_DST" ]]; then
+    rm -f "$WRAPPER_DST"
+    log "Removed old npm symlink"
+fi
+
+# Create wrapper
 WRAPPER_DST="${PREFIX}/bin/claude"
 
 cat > "$WRAPPER_DST" << 'WRAPPER_EOF'
