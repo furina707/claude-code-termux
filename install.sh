@@ -112,9 +112,51 @@ ok "installed → $CC_DIR"
 
 # ── step 4: linux arm64 binary ────────────────────────────────
 sep "4/7  Install native Linux ARM64 binary"
-log "npm install @anthropic-ai/claude-code-linux-arm64..."
-npm install -g @anthropic-ai/claude-code-linux-arm64 \
-    2>&1 | grep -vE '^npm (warn|notice)' || true
+log "Installing native binary..."
+
+# Try npm install first, if fails use direct download
+if npm install -g @anthropic-ai/claude-code-linux-arm64 2>/dev/null && [[ -f "$CLAUDE_BIN" ]]; then
+    ok "installed via npm"
+else
+    # Direct download - npm rejects Android platform
+    warn "npm install failed (platform not supported), downloading directly..."
+
+    # Create directory
+    mkdir -p "$ARM_DIR"
+
+    # Get latest version
+    VERSION=$(npm view @anthropic-ai/claude-code-linux-arm64 version 2>/dev/null) || VERSION="2.1.141"
+
+    # Download tarball
+    TARBALL="${ARM_DIR}/package.tgz"
+    curl -fSL "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-${VERSION}.tgz" \
+        -o "$TARBALL" 2>/dev/null || {
+        warn "Download failed, trying alternative..."
+        # Fallback to GitHub release
+        curl -fSL "https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux" \
+            -o "$CLAUDE_BIN" 2>/dev/null || true
+    }
+
+    # Extract if tarball exists
+    if [[ -f "$TARBALL" ]]; then
+        tar -xzf "$TARBALL" -C "$ARM_DIR" 2>/dev/null || true
+        # Move binary from package/bin to expected location
+        if [[ -f "${ARM_DIR}/package/bin/claude" ]]; then
+            mv "${ARM_DIR}/package/bin/claude" "$CLAUDE_BIN"
+            rm -rf "${ARM_DIR}/package"
+        fi
+        rm -f "$TARBALL"
+    fi
+fi
+
+# Final check
+if [[ ! -f "$CLAUDE_BIN" ]]; then
+    warn "Binary not found, trying GitHub release..."
+    # Last resort - use pre-built binary from GitHub
+    curl -fSL "https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux" \
+        -o "$CLAUDE_BIN" 2>/dev/null || true
+fi
+
 [[ -f "$CLAUDE_BIN" ]] || die "linux-arm64 binary not found at $CLAUDE_BIN"
 chmod +x "$CLAUDE_BIN"
 ok "binary → $CLAUDE_BIN"

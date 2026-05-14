@@ -1,9 +1,6 @@
 # SHA256 checksums for install scripts
 # Verify before running: sha256sum -c CHECKSUMS.txt
-#
-# Secure install (recommended):
-#   curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install-secure.sh | bash
 
-af86c9214f0c41fc9e705a1883f595980177f76369287df7b1184b3b880b73cd  install.sh
+e5e8981f1179a3c05583acaae7ef7bfe1b935b4b2dacbced7902196f4057c95b  install.sh
 50d4ca92802e1294ccdfc12e2a7b4c5334924d5d78db348e9fb3720ac8a52768  uninstall.sh
 075ce1501b22a57ab3860314bfa1c7c170b6913607c75c97e9f17ba5dabc1166  claude-wrapper.sh
