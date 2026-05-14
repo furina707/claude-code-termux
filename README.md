@@ -42,11 +42,32 @@ npm install -g @xurxuo/claude-code-termux
 
 ---
 
-## Alternative: Install Binary Directly
+## Alternative: Use Shell Wrapper (Recommended)
+
+This is a simple shell script that you can read and verify before running:
 
 ```bash
-curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o $PREFIX/bin/claude && chmod +x $PREFIX/bin/claude
+# Download and review the script first
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/claude-wrapper.sh -o /tmp/claude-wrapper.sh
+
+# Read it - it's just bash, easy to audit!
+cat /tmp/claude-wrapper.sh
+
+# If OK, install it
+mv /tmp/claude-wrapper.sh $PREFIX/bin/claude
+chmod +x $PREFIX/bin/claude
 ```
+
+Benefits:
+- **Transparent** - anyone can read the code
+- **Auditable** - no black box binary
+- **Safe** - verify before running
+
+---
+
+**⚠️ Avoid: Pre-compiled ELF Binary**
+
+The `claude-termux` binary is a compiled ELF that cannot be easily audited. Use the shell wrapper instead.
 
 ---
 
@@ -173,36 +194,26 @@ chmod +x $PREFIX/bin/claude
 
 ## Security Audit
 
-This binary is open source. You can verify what it does before running.
+The shell wrapper is fully transparent. You can read and verify it before running.
 
-### What it does:
-- `pkg install nodejs-lts grun` - install required packages
-- `npm install -g @anthropic-ai/claude-code` - install Claude Code JS layer
-- `curl` download native binary from npm registry
-- `grun` or `node` - run Claude Code
-- `npm uninstall` - remove packages on uninstall
+### What it does (from source):
+- Checks if `grun` and `node` are installed
+- Runs `grun` or `node` to execute Claude Code
+- Handles `--update`, `--uninstall`, `--version`, `--help` commands
 
 ### What it does NOT do:
-- Write to arbitrary filesystem locations
+- Download or execute arbitrary code
+- Write to arbitrary filesystem
 - Modify your settings
-- Execute arbitrary code
-- Connect to anything except npm registry
+- Run any hidden commands
 
 ### How to verify:
 ```bash
-# 1. View source code
-curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/rust-wrapper/src/main.rs
+# 1. Download and read the wrapper
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/claude-wrapper.sh | less
 
-# 2. Download and verify binary
-curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o /tmp/claude-termux
-file /tmp/claude-termux  # Should be ELF for ARM64
-strings /tmp/claude-termux | head -100  # See embedded strings
-
-# 3. Build from source (advanced)
-# Requires Rust cross-compiler for aarch64
-git clone https://github.com/DamnSit/claude-code-termux
-cd claude-code-termux/rust-wrapper
-cargo build --release --target aarch64-unknown-linux-musl
+# 2. Verify it's just bash (no base64 encoded binaries)
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/claude-wrapper.sh | head -20
 ```
 
 ---
