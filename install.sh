@@ -121,17 +121,41 @@ mkdir -p "$ARM_DIR"
 VERSION=$(npm view @anthropic-ai/claude-code-linux-arm64 version 2>/dev/null) || VERSION="2.1.141"
 log "Latest version: $VERSION"
 
-# Download tarball from npm registry
+# Download tarball from npm registry - show progress
 TARBALL="${ARM_DIR}/package.tgz"
 log "Downloading from npm registry..."
-if curl -fSL "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-${VERSION}.tgz" \
-    -o "$TARBALL" 2>/dev/null; then
+
+DOWNLOAD_URL="https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-${VERSION}.tgz"
+log "URL: $DOWNLOAD_URL"
+
+# Download with visible output
+if curl -fSL "$DOWNLOAD_URL" -o "$TARBALL" --progress-bar; then
+    log "Download complete, size: $(ls -lh "$TARBALL" 2>/dev/null | awk '{print $5}')"
     log "Extracting..."
-    tar -xzf "$TARBALL" -C "$ARM_DIR" 2>/dev/null || true
+    tar -xzf "$TARBALL" -C "$ARM_DIR" 2>&1 | head -5 || true
 
     # Move binary from package/bin to expected location
     if [[ -f "${ARM_DIR}/package/bin/claude" ]]; then
         mv "${ARM_DIR}/package/bin/claude" "$CLAUDE_BIN"
+        log "Moved binary to $CLAUDE_BIN"
+        rm -rf "${ARM_DIR}/package"
+    elif [[ -f "${ARM_DIR}/claude" ]]; then
+        log "Binary already at correct location"
+    else
+        warn "Binary not found after extraction"
+        warn "Checking contents: $(ls -la "$ARM_DIR" 2>/dev/null)"
+    fi
+    rm -f "$TARBALL"
+else
+    warn "Download failed, trying with wget..."
+    if wget -q "$DOWNLOAD_URL" -O "$TARBALL"; then
+        tar -xzf "$TARBALL" -C "$ARM_DIR" 2>/dev/null || true
+        [[ -f "${ARM_DIR}/package/bin/claude" ]] && mv "${ARM_DIR}/package/bin/claude" "$CLAUDE_BIN"
+        rm -rf "${ARM_DIR}/package" "$TARBALL"
+    else
+        die "Failed to download binary from npm registry"
+    fi
+fi
         rm -rf "${ARM_DIR}/package"
     fi
     rm -f "$TARBALL"
