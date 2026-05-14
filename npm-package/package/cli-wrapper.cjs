@@ -175,7 +175,7 @@ function refreshNativePackage(info, force = false) {
     console.error(
       `[${WRAPPER_NAME}] Updating Claude Code native package ${current || 'missing'} -> ${latest}`,
     )
-    npmInstallLatest([PACKAGE_PREFIX, info.pkg])
+    npmInstallLatest([info.pkg])
   }
 
   markUpdateChecked()
