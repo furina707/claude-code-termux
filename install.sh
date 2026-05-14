@@ -135,27 +135,19 @@ if curl -fSL "$DOWNLOAD_URL" -o "$TARBALL" --progress-bar; then
     tar -xzf "$TARBALL" -C "$ARM_DIR" 2>&1 | head -5 || true
     rm -f "$TARBALL"
 
-    # Check where the binary ended up
-    if [[ -f "${ARM_DIR}/package/bin/claude" ]]; then
-        mv "${ARM_DIR}/package/bin/claude" "$CLAUDE_BIN"
+    # Binary is at package/claude (not package/bin/claude!)
+    if [[ -f "${ARM_DIR}/package/claude" ]]; then
+        mv "${ARM_DIR}/package/claude" "$CLAUDE_BIN"
         rm -rf "${ARM_DIR}/package"
         log "Moved binary to $CLAUDE_BIN"
     elif [[ -f "${ARM_DIR}/claude" ]]; then
         log "Binary already at correct location"
     else
-        # Check all possible locations
         log "Searching for binary..."
         find "$ARM_DIR" -name "claude" -type f 2>/dev/null | head -5
     fi
 else
-    warn "Download failed, trying with wget..."
-    if wget -q "$DOWNLOAD_URL" -O "$TARBALL"; then
-        tar -xzf "$TARBALL" -C "$ARM_DIR" 2>/dev/null || true
-        [[ -f "${ARM_DIR}/package/bin/claude" ]] && mv "${ARM_DIR}/package/bin/claude" "$CLAUDE_BIN"
-        rm -rf "${ARM_DIR}/package" "$TARBALL"
-    else
-        die "Failed to download binary from npm registry"
-    fi
+    die "Failed to download binary from npm registry"
 fi
 
 [[ -f "$CLAUDE_BIN" ]] || die "linux-arm64 binary not found at $CLAUDE_BIN"
