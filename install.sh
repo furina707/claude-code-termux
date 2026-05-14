@@ -133,19 +133,20 @@ if curl -fSL "$DOWNLOAD_URL" -o "$TARBALL" --progress-bar; then
     log "Download complete, size: $(ls -lh "$TARBALL" 2>/dev/null | awk '{print $5}')"
     log "Extracting..."
     tar -xzf "$TARBALL" -C "$ARM_DIR" 2>&1 | head -5 || true
+    rm -f "$TARBALL"
 
-    # Move binary from package/bin to expected location
+    # Check where the binary ended up
     if [[ -f "${ARM_DIR}/package/bin/claude" ]]; then
         mv "${ARM_DIR}/package/bin/claude" "$CLAUDE_BIN"
-        log "Moved binary to $CLAUDE_BIN"
         rm -rf "${ARM_DIR}/package"
+        log "Moved binary to $CLAUDE_BIN"
     elif [[ -f "${ARM_DIR}/claude" ]]; then
         log "Binary already at correct location"
     else
-        warn "Binary not found after extraction"
-        warn "Checking contents: $(ls -la "$ARM_DIR" 2>/dev/null)"
+        # Check all possible locations
+        log "Searching for binary..."
+        find "$ARM_DIR" -name "claude" -type f 2>/dev/null | head -5
     fi
-    rm -f "$TARBALL"
 else
     warn "Download failed, trying with wget..."
     if wget -q "$DOWNLOAD_URL" -O "$TARBALL"; then
@@ -155,12 +156,6 @@ else
     else
         die "Failed to download binary from npm registry"
     fi
-fi
-        rm -rf "${ARM_DIR}/package"
-    fi
-    rm -f "$TARBALL"
-else
-    die "Failed to download binary from npm registry"
 fi
 
 [[ -f "$CLAUDE_BIN" ]] || die "linux-arm64 binary not found at $CLAUDE_BIN"
