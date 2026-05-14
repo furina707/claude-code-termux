@@ -83,6 +83,32 @@ Add:
 | `claude update` | Update to latest version |
 | `claude install` | Reinstall dependencies |
 | `claude uninstall` | Remove Claude Code |
+| `claude --dangerously-skip-permissions` | Run without permission prompts (advanced) |
+
+### About --dangerously-skip-permissions
+
+This flag tells Claude Code to **skip all permission prompts** and run any tool/command automatically.
+
+**What it does:**
+- Claude can execute any shell command without asking first
+- Claude can read/write any file without asking
+- No confirmation needed for dangerous operations
+
+**⚠️ Risks (use with caution):**
+- Can accidentally delete important files
+- Can run harmful commands (like `rm -rf /`)
+- No protection against mistakes
+- Use only when you understand what you're doing
+
+**When to use:**
+- Running automated scripts
+- Batch operations you trust
+- When you're watching and can stop it if needed
+
+**Example:**
+```bash
+claude --dangerously-skip-permissions
+```
 
 ---
 
