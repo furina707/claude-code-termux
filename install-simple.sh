@@ -45,10 +45,29 @@ echo "📥 Downloading native binary..."
 ARM_DIR="/data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64"
 mkdir -p "$ARM_DIR"
 VERSION=$(npm view @anthropic-ai/claude-code-linux-arm64 version 2>/dev/null || echo "2.1.141")
-curl -fsSL "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-${VERSION}.tgz" -o /tmp/claude.tgz
-tar -xzf /tmp/claude.tgz -C "$ARM_DIR"
-mv "$ARM_DIR/package/claude" "$ARM_DIR/claude" 2>/dev/null || true
-rm -rf "$ARM_DIR/package" /tmp/claude.tgz
+echo "   Version: $VERSION"
+
+# Try curl first, then wget
+TARBALL="/tmp/claude.tgz"
+echo "   Downloading..."
+if curl -fSL "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-${VERSION}.tgz" -o "$TARBALL" 2>&1; then
+    echo "   Extracting..."
+    tar -xzf "$TARBALL" -C "$ARM_DIR"
+    if [[ -f "$ARM_DIR/package/claude" ]]; then
+        mv "$ARM_DIR/package/claude" "$ARM_DIR/claude"
+        rm -rf "$ARM_DIR/package"
+    fi
+    rm -f "$TARBALL"
+    echo "   ✓ Binary installed"
+else
+    echo "   ⚠️ Download failed, trying with wget..."
+    wget -q "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-${VERSION}.tgz" -O "$TARBALL" 2>&1 && \
+    tar -xzf "$TARBALL" -C "$ARM_DIR" && \
+    [[ -f "$ARM_DIR/package/claude" ]] && mv "$ARM_DIR/package/claude" "$ARM_DIR/claude" && \
+    rm -rf "$ARM_DIR/package" "$TARBALL" && \
+    echo "   ✓ Binary installed via wget" || \
+    echo "   ⚠️ Download failed"
+fi
 
 # CRITICAL: Create wrapper that uses grun OR node
 echo "🔧 Creating wrapper..."
