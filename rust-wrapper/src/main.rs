@@ -137,7 +137,77 @@ fn install_deps() -> Result<()> {
     Ok(())
 }
 
+fn check_and_update_binary() -> Result<bool> {
+    // Get current version from npm
+    let version_output = Command::new("npm")
+        .args(["view", "@anthropic-ai/claude-code-linux-arm64", "version"])
+        .output()?;
+    let latest_version = String::from_utf8_lossy(&version_output.stdout).trim().to_string();
+
+    // Check local version (stored in a file)
+    let version_file = PathBuf::from("/data/data/com.termux/files/usr/etc/claude-termux-version");
+    let current_version = if version_file.exists() {
+        std::fs::read_to_string(&version_file).unwrap_or_default().trim().to_string()
+    } else {
+        String::new()
+    };
+
+    // Update if different
+    if current_version != latest_version && !latest_version.is_empty() {
+        println!("{} New version available: {} → {}", "▸".yellow(), current_version, latest_version);
+        println!("{} Downloading update...", "▸".yellow());
+
+        let npm_home = std::env::var("npm_config_prefix")
+            .unwrap_or_else(|_| "/data/data/com.termux/files/usr".to_string());
+        let binary_dir = format!("{}/lib/node_modules/@anthropic-ai/claude-code-linux-arm64", npm_home);
+        let tarball = format!("{}/package.tgz", binary_dir);
+
+        let download = Command::new("curl")
+            .args(["-L", "-o", &tarball, &format!("https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-{}.tgz", latest_version)])
+            .output();
+
+        if download.is_ok() && PathBuf::from(&tarball).exists() {
+            // Clean old files
+            let _ = Command::new("rm").args(["-rf", &format!("{}/package", binary_dir)]).output();
+            let _ = Command::new("rm").args(["-f", &format!("{}/claude", binary_dir)]).output();
+
+            // Extract
+            let _ = Command::new("tar")
+                .args(["-xzf", &tarball, "-C", &binary_dir])
+                .output();
+
+            // Move binary
+            let package_dir = format!("{}/package", binary_dir);
+            if PathBuf::from(&package_dir).exists() {
+                let _ = Command::new("mv")
+                    .args(["-f", &format!("{}/bin/claude", package_dir), &format!("{}/claude", binary_dir)])
+                    .output();
+            }
+
+            // Save new version
+            let _ = std::fs::write(&version_file, &latest_version);
+
+            // Cleanup
+            let _ = std::fs::remove_file(&tarball);
+            println!("{} Updated to {}", "✓".green(), latest_version);
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 fn run_claude() -> Result<()> {
+    // Auto-check for update (skip if --no-update flag)
+    let args: Vec<String> = std::env::args().collect();
+    if !args.iter().any(|a| a == "--no-update" || a == "-n") {
+        // Only check update on ARM64
+        if let Ok(output) = Command::new("uname").arg("-m").output() {
+            if String::from_utf8_lossy(&output.stdout).contains("aarch64") {
+                let _ = check_and_update_binary();
+            }
+        }
+    }
+
     // Check if dependencies are installed
     if !check_deps() {
         println!("{}", "Dependencies not found. Installing...".yellow());
