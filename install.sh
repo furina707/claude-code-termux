@@ -25,6 +25,8 @@ fi
 # Create temp dir in PREFIX (writable)
 TEMP_DIR="/data/data/com.termux/files/usr/tmp"
 mkdir -p "$TEMP_DIR"
+WORK_DIR="$(mktemp -d "${TEMP_DIR}/claude-install.XXXXXX")"
+trap 'rm -rf "$WORK_DIR"' EXIT
 
 # Install Claude Code JS layer
 echo "📥 Downloading Claude Code..."
@@ -35,17 +37,25 @@ echo "📥 Downloading native binary..."
 ARM_DIR="/data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64"
 mkdir -p "$ARM_DIR"
 VERSION=$(npm view @anthropic-ai/claude-code-linux-arm64 version 2>/dev/null || echo "2.1.141")
+[[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){2}(-[0-9A-Za-z.-]+)?$ ]] || { echo "Invalid package version: $VERSION"; exit 1; }
 echo "   Version: $VERSION"
 
 # Use PREFIX temp dir
-TARBALL="${TEMP_DIR}/claude.tgz"
+TARBALL="${WORK_DIR}/claude.tgz"
+EXTRACT_DIR="${WORK_DIR}/extract"
+mkdir -p "$EXTRACT_DIR"
 echo "   Downloading..."
 
-if curl -fSL "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-${VERSION}.tgz" -o "$TARBALL"; then
+if curl --proto '=https' --tlsv1.2 -fSL "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-${VERSION}.tgz" -o "$TARBALL"; then
     echo "   Extracting..."
-    tar -xzf "$TARBALL" -C "$ARM_DIR"
-    [[ -f "$ARM_DIR/package/claude" ]] && mv "$ARM_DIR/package/claude" "$ARM_DIR/claude"
-    rm -rf "$ARM_DIR/package" "$TARBALL"
+    while IFS= read -r entry; do
+        case "$entry" in
+            ""|/*|../*|*/../*|*"/.."|*"/../"*) echo "Unsafe tar entry: $entry"; exit 1 ;;
+        esac
+    done < <(tar -tzf "$TARBALL")
+    tar -xzf "$TARBALL" -C "$EXTRACT_DIR"
+    [[ -f "$EXTRACT_DIR/package/claude" ]] || { echo "   ❌ Claude binary missing from package"; exit 1; }
+    install -m 0755 "$EXTRACT_DIR/package/claude" "$ARM_DIR/claude"
     echo "   ✓ Binary installed"
 else
     echo "   ⚠️ Download failed"

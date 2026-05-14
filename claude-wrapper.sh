@@ -139,8 +139,16 @@ EOF
 
   --uninstall|-uninstall|uninstall)
     echo -e "${YEL}▸${NC} Uninstalling Claude Code Termux..."
-    UNINSTALL_URL="https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/uninstall.sh"
-    curl -fsSL "$UNINSTALL_URL" | bash
+    BASE_URL="https://raw.githubusercontent.com/DamnSit/claude-code-termux/main"
+    TMPDIR="${PREFIX:-/data/data/com.termux/files/usr}/tmp"
+    WORKDIR="$(mktemp -d "${TMPDIR}/claude-uninstall.XXXXXX")"
+    trap 'rm -rf "$WORKDIR"' EXIT
+
+    curl --proto '=https' --tlsv1.2 -fsSL "${BASE_URL}/CHECKSUMS.txt" -o "${WORKDIR}/CHECKSUMS.txt"
+    curl --proto '=https' --tlsv1.2 -fsSL "${BASE_URL}/uninstall.sh" -o "${WORKDIR}/uninstall.sh"
+    grep -E '^[a-fA-F0-9]{64}[[:space:]]+uninstall\.sh$' "${WORKDIR}/CHECKSUMS.txt" > "${WORKDIR}/uninstall.sha256"
+    (cd "$WORKDIR" && sha256sum -c uninstall.sha256 --status)
+    bash "${WORKDIR}/uninstall.sh"
     exit $?
     ;;
 
