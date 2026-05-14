@@ -1,539 +1,1106 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Claude Code Termux</title>
-<meta name="description" content="Run Claude Code natively on Android ARM64 with glibc-runner — no Ubuntu, no emulator.">
-<meta property="og:title" content="Claude Code Termux">
-<meta property="og:description" content="Native Claude Code on Android — one command install, full performance.">
-<meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+<title>Claude Code · Termux</title>
+<meta name="description" content="Run Claude Code natively on Android ARM64 — no Ubuntu, no emulator, no cloud VM.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#050a05;--surface:#0a110a;--border:#0f1a0f;
-  --green:#00ff88;--green-dim:rgba(0,255,136,0.1);--green-border:rgba(0,255,136,0.25);
-  --red:#ff4466;--red-dim:rgba(255,68,102,0.1);--red-border:rgba(255,68,102,0.25);
-  --text:#ffffff;--muted:#7788aa;--faint:#2a4a2a;--dimmer:#1a2a1a;
+/* ─── RESET + BASE ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #060608;
+  --bg2:      #0d0d12;
+  --bg3:      #12121a;
+  --border:   rgba(255,255,255,0.07);
+  --green:    #00ff9d;
+  --cyan:     #00cfff;
+  --purple:   #9d6fff;
+  --red:      #ff4b6e;
+  --yellow:   #ffd95a;
+  --text:     #e8e8f0;
+  --muted:    #5a5a72;
+  --dim:      #2e2e3e;
+  --font-head: 'Oxanium', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --glow-g:   0 0 20px rgba(0,255,157,0.35);
+  --glow-c:   0 0 20px rgba(0,207,255,0.35);
 }
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;overflow:hidden}
-body{display:flex;flex-direction:column}
 
-/* ── top bar ─────────────────────────── */
-#topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 28px;border-bottom:1px solid var(--border);flex-shrink:0}
-#logo{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--faint);letter-spacing:1px}
-#counter{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint)}
-#lang-btns{display:flex;gap:4px}
-.lang-btn{font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--dimmer);background:transparent;color:#3a5a3a;cursor:pointer;transition:all .15s}
-.lang-btn.active{background:var(--green-dim);border-color:var(--green-border);color:var(--green)}
+html { scroll-behavior: smooth; }
 
-/* ── slide area ──────────────────────── */
-#stage{flex:1;position:relative;overflow:hidden}
-.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 64px;opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;pointer-events:none}
-.slide.active{opacity:1;transform:none;pointer-events:all}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
 
-/* ── bottom nav ──────────────────────── */
-#nav{display:flex;align-items:center;justify-content:center;gap:20px;padding:14px 28px;border-top:1px solid var(--border);flex-shrink:0}
-.nav-btn{font-family:'JetBrains Mono',monospace;font-size:12px;padding:7px 22px;border-radius:8px;border:1px solid;cursor:pointer;background:transparent;transition:all .15s}
-.nav-btn:disabled{border-color:var(--dimmer);color:var(--dimmer);cursor:default}
-.nav-btn.prev:not(:disabled){border-color:#1a3a1a;color:#3a6a3a}
-.nav-btn.next:not(:disabled){border-color:var(--green-border);color:var(--green);background:var(--green-dim)}
-#dots{display:flex;gap:6px;align-items:center}
-.dot{height:6px;border-radius:3px;border:none;cursor:pointer;background:#1a3a1a;transition:all .2s;width:6px;padding:0}
-.dot.active{background:var(--green);width:24px}
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
 
-/* ── typography helpers ──────────────── */
-.tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:4px;color:var(--green);margin-bottom:20px;opacity:.8}
-.tag.red{color:var(--red)}
-h1{font-size:68px;font-weight:800;line-height:1;letter-spacing:-3px;color:var(--text)}
-h1 .sub{display:block;font-family:'JetBrains Mono',monospace;font-size:34px;color:var(--green);font-weight:700;margin-top:4px;letter-spacing:-1px}
-h2{font-size:42px;font-weight:800;line-height:1.15;letter-spacing:-1.5px;color:var(--text);margin-bottom:40px;white-space:pre-line}
-.desc{font-size:17px;color:var(--muted);max-width:520px;line-height:1.7;white-space:pre-line;margin:24px 0 36px}
-.cta-pill{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--green);background:var(--green-dim);padding:10px 20px;border-radius:6px;border:1px solid var(--green-border);display:inline-block}
+/* ─── CANVAS BG ────────────────────────────────────────── */
+#canvas-bg {
+  position: fixed; inset: 0;
+  z-index: 0; opacity: 0.18;
+  pointer-events: none;
+}
 
-/* ── cover centered ──────────────────── */
-.slide.cover{align-items:center;text-align:center}
-.slide.cover .grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(0,255,136,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.03) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+/* ─── NOISE OVERLAY ─────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  pointer-events: none;
+}
 
-/* ── items list ──────────────────────── */
-.items{display:flex;flex-direction:column;gap:18px}
-.item{display:flex;gap:18px;align-items:flex-start}
-.item-num{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:12px}
-.item-num.red{background:var(--red-dim);border:1px solid var(--red-border);color:var(--red)}
-.item-num.green{background:var(--green-dim);border:1px solid var(--green-border);font-size:16px}
-.item-title{font-weight:700;font-size:15px;margin-bottom:5px}
-.item-title.green{color:var(--green)}
-.item-title.white{color:var(--text)}
-.item-desc{font-size:13px;color:var(--muted);line-height:1.6}
+/* ─── WRAPPER ────────────────────────────────────────────── */
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; position: relative; z-index: 2; }
 
-/* ── arch chain ──────────────────────── */
-.chain{display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-bottom:32px}
-.chain-node{background:var(--green-dim);border:1px solid var(--green-border);border-radius:12px;padding:16px 22px;text-align:center;min-width:130px}
-.chain-node .cn{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--green);font-weight:700;margin-bottom:5px}
-.chain-node .cs{font-size:11px;color:#445566;line-height:1.4}
-.chain-arrow{padding:0 10px;color:#334455;font-size:20px;font-family:monospace}
-.arch-note{font-size:13px;color:#445566;font-style:italic}
+/* ─── NAV ─────────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 18px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid transparent;
+  transition: border-color .3s, background .3s;
+}
+nav.scrolled {
+  border-color: var(--border);
+  background: rgba(6,6,8,0.88);
+  backdrop-filter: blur(18px);
+}
 
-/* ── install ─────────────────────────── */
-.code-block{background:#0a0f0a;border:1px solid #1a2a1a;border-radius:12px;padding:18px 22px;margin-bottom:28px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green);line-height:1.7;word-break:break-all}
-.code-block .prompt{color:#445544}
-.steps-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px}
-.step-row{display:flex;align-items:center;gap:10px}
-.step-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);opacity:.5;min-width:20px}
-.step-text{font-size:12px;color:var(--muted)}
+.nav-logo {
+  font-family: var(--font-head);
+  font-size: 15px; font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--text);
+  display: flex; align-items: center; gap: 10px;
+}
+.nav-logo .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: var(--glow-g); animation: pulse 2s ease-in-out infinite; }
 
-/* ── compare table ───────────────────── */
-table{width:100%;border-collapse:collapse}
-th{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;padding:8px 14px;border-bottom:1px solid var(--border);text-align:center}
-th:first-child{text-align:left}
-th.hl{color:var(--green)}
-th.dim{color:#445566}
-td{font-size:13px;color:#4a5568;text-align:center;padding:11px 14px;border-bottom:1px solid #0a120a}
-td:first-child{font-family:'JetBrains Mono',monospace;font-size:11px;color:#445566;text-align:left}
-td.hl{color:var(--text);font-weight:700}
-tr:nth-child(even){background:rgba(0,255,136,.02)}
+.nav-links { display: flex; align-items: center; gap: 6px; }
+.nav-links a {
+  font-size: 12px; font-weight: 500; letter-spacing: .06em;
+  color: var(--muted); text-decoration: none;
+  padding: 6px 14px; border-radius: 6px;
+  transition: color .2s, background .2s;
+}
+.nav-links a:hover { color: var(--text); background: var(--dim); }
 
-/* ── end ─────────────────────────────── */
-.slide.end{align-items:center;text-align:center}
-.slide.end h2{font-size:52px;margin-bottom:32px}
-.links{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:32px}
-.link-pill{font-family:'JetBrains Mono',monospace;font-size:11px;color:#334455;background:rgba(255,255,255,.02);padding:9px 16px;border-radius:8px;border:1px solid #1a2a2a}
-.link-pill span{color:#556677;margin-right:6px}
+.nav-gh {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  color: var(--bg); background: var(--green);
+  padding: 7px 18px; border-radius: 6px;
+  text-decoration: none;
+  transition: opacity .2s, box-shadow .2s;
+}
+.nav-gh:hover { opacity: .88; box-shadow: var(--glow-g); }
 
-@media(max-width:700px){
-  .slide{padding:0 24px}
-  h1{font-size:44px}h1 .sub{font-size:22px}
-  h2{font-size:28px}
-  .steps-grid{grid-template-columns:1fr}
-  .chain{gap:4px}.chain-node{min-width:100px;padding:10px 12px}
+/* ─── HERO ────────────────────────────────────────────────── */
+#hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 120px 0 80px;
+  position: relative; z-index: 2;
+}
+
+.hero-eyebrow {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 28px;
+}
+.hero-badge {
+  font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--green); border: 1px solid rgba(0,255,157,.25);
+  padding: 5px 14px; border-radius: 30px;
+  background: rgba(0,255,157,.06);
+}
+.hero-badge-sub {
+  font-size: 11px; color: var(--muted); letter-spacing: .06em;
+}
+
+.hero-title {
+  font-family: var(--font-head);
+  font-size: clamp(54px, 8vw, 96px);
+  font-weight: 800; line-height: .95;
+  letter-spacing: -.02em;
+  margin-bottom: 32px;
+}
+.hero-title .line1 { display: block; color: var(--text); }
+.hero-title .line2 {
+  display: block;
+  background: linear-gradient(135deg, var(--green) 0%, var(--cyan) 60%, var(--purple) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(0,255,157,.3));
+}
+
+.hero-sub {
+  font-size: 17px; color: var(--muted); line-height: 1.65;
+  max-width: 520px; margin-bottom: 44px;
+}
+.hero-sub strong { color: var(--text); font-weight: 500; }
+
+.hero-cta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 72px; }
+
+.btn-primary {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--bg); background: var(--green);
+  padding: 13px 26px; border-radius: 8px;
+  text-decoration: none; border: none; cursor: pointer;
+  transition: opacity .2s, transform .15s, box-shadow .2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary:hover { opacity: .88; transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,255,157,.3); }
+
+.btn-ghost {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+  letter-spacing: .04em;
+  color: var(--muted); background: transparent;
+  padding: 13px 26px; border-radius: 8px;
+  text-decoration: none; border: 1px solid var(--dim);
+  transition: color .2s, border-color .2s, background .2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--border); background: var(--bg3); }
+
+/* hero terminal */
+.hero-terminal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 640px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04);
+}
+.terminal-bar {
+  background: var(--bg3);
+  padding: 12px 18px;
+  display: flex; align-items: center; gap: 7px;
+  border-bottom: 1px solid var(--border);
+}
+.tbar-dot { width: 11px; height: 11px; border-radius: 50%; }
+.tbar-dot.r { background: #ff5f57; }
+.tbar-dot.y { background: #febc2e; }
+.tbar-dot.g { background: #28c840; }
+.tbar-title { font-size: 12px; color: var(--muted); margin-left: auto; }
+.terminal-body { padding: 22px 24px; font-size: 13px; line-height: 1.8; }
+.t-prompt { color: var(--green); }
+.t-cmd { color: var(--text); }
+.t-comment { color: var(--muted); }
+.t-out-ok { color: var(--cyan); }
+.t-out-dim { color: var(--muted); }
+.t-cursor { display: inline-block; width: 8px; height: 14px; background: var(--green); animation: blink .9s step-end infinite; vertical-align: text-bottom; }
+
+/* hero stats */
+.hero-stats {
+  display: flex; gap: 40px; flex-wrap: wrap;
+}
+.stat { }
+.stat-num {
+  font-family: var(--font-head); font-size: 28px; font-weight: 700;
+  color: var(--green);
+}
+.stat-label { font-size: 11px; color: var(--muted); letter-spacing: .06em; margin-top: 2px; }
+
+/* ─── SECTION BASE ────────────────────────────────────────── */
+section { padding: 100px 0; position: relative; z-index: 2; }
+
+.section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .15em; text-transform: uppercase;
+  color: var(--green); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-label::before { content: ''; display: block; width: 28px; height: 1px; background: var(--green); }
+
+h2.section-title {
+  font-family: var(--font-head);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 700; line-height: 1.15;
+  letter-spacing: -.01em;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+h2.section-title em { font-style: normal; color: var(--green); }
+
+.section-sub { font-size: 16px; color: var(--muted); max-width: 500px; margin-bottom: 56px; line-height: 1.65; }
+
+/* divider */
+.divider { width: 100%; height: 1px; background: var(--border); position: relative; z-index: 2; }
+
+/* ─── PROBLEM ─────────────────────────────────────────────── */
+#problem { background: transparent; }
+
+.problem-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+}
+
+.problem-card {
+  background: var(--bg2);
+  padding: 36px 32px;
+  transition: background .25s;
+  position: relative;
+}
+.problem-card:hover { background: var(--bg3); }
+.problem-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--red), transparent);
+  opacity: 0; transition: opacity .3s;
+}
+.problem-card:hover::before { opacity: 1; }
+
+.prob-num {
+  font-family: var(--font-head); font-size: 11px; font-weight: 700;
+  letter-spacing: .12em; color: var(--red);
+  margin-bottom: 20px;
+}
+.prob-icon { font-size: 28px; margin-bottom: 14px; }
+.prob-title {
+  font-family: var(--font-head); font-size: 17px; font-weight: 600;
+  color: var(--text); margin-bottom: 10px;
+}
+.prob-text { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+/* ─── SOLUTION ────────────────────────────────────────────── */
+#solution { }
+
+.solution-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+}
+
+.sol-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 32px 28px;
+  position: relative; overflow: hidden;
+  transition: border-color .25s, transform .2s;
+}
+.sol-card:hover { border-color: rgba(0,255,157,.25); transform: translateY(-3px); }
+.sol-card::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  opacity: 0; transition: opacity .3s;
+}
+.sol-card:hover::after { opacity: 1; }
+
+.sol-glyph {
+  width: 44px; height: 44px;
+  background: rgba(0,255,157,.08); border: 1px solid rgba(0,255,157,.15);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; margin-bottom: 20px;
+}
+.sol-title {
+  font-family: var(--font-head); font-size: 17px; font-weight: 600;
+  color: var(--text); margin-bottom: 10px;
+}
+.sol-text { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.sol-tag {
+  display: inline-block; margin-top: 16px;
+  font-size: 11px; color: var(--green); background: rgba(0,255,157,.07);
+  border: 1px solid rgba(0,255,157,.2);
+  padding: 3px 10px; border-radius: 20px;
+}
+
+/* ─── ARCHITECTURE ────────────────────────────────────────── */
+#arch { }
+
+.arch-diagram {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 48px 40px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; flex-wrap: wrap;
+  position: relative; overflow: hidden;
+}
+.arch-diagram::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0,255,157,.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.arch-node {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 8px; position: relative; z-index: 1;
+  animation: fadeUp .6s ease both;
+}
+.arch-node:nth-child(1) { animation-delay: .1s; }
+.arch-node:nth-child(3) { animation-delay: .25s; }
+.arch-node:nth-child(5) { animation-delay: .4s; }
+.arch-node:nth-child(7) { animation-delay: .55s; }
+
+.arch-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 28px; text-align: center;
+  min-width: 140px;
+  transition: border-color .25s, box-shadow .25s;
+}
+.arch-box:hover { border-color: rgba(0,255,157,.3); box-shadow: 0 0 24px rgba(0,255,157,.08); }
+
+.arch-box .ab-label {
+  font-family: var(--font-head); font-size: 15px; font-weight: 700;
+  color: var(--text); margin-bottom: 4px;
+}
+.arch-box .ab-sub {
+  font-size: 11px; color: var(--muted); letter-spacing: .04em;
+}
+.arch-box .ab-tech {
+  font-size: 10px; color: var(--green);
+  margin-top: 8px; font-weight: 500;
+}
+
+.arch-arrow {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 0 4px; z-index: 1;
+}
+.arch-arrow .arr-line {
+  width: 48px; height: 1px;
+  background: linear-gradient(90deg, var(--dim), var(--muted));
+  position: relative;
+}
+.arch-arrow .arr-line::after {
+  content: '▶'; font-size: 8px; color: var(--muted);
+  position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+}
+.arch-arrow .arr-label { font-size: 10px; color: var(--muted); letter-spacing: .04em; }
+
+.arch-foot {
+  width: 100%; text-align: center; margin-top: 32px;
+  font-size: 13px; color: var(--muted); z-index: 1;
+}
+.arch-foot strong { color: var(--text); }
+
+/* ─── INSTALL ─────────────────────────────────────────────── */
+#install { }
+
+.install-tabs {
+  display: flex; gap: 4px; margin-bottom: 24px;
+}
+.tab-btn {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  letter-spacing: .05em; color: var(--muted);
+  background: transparent; border: 1px solid var(--dim);
+  padding: 8px 18px; border-radius: 6px; cursor: pointer;
+  transition: all .2s;
+}
+.tab-btn.active { color: var(--bg); background: var(--green); border-color: var(--green); }
+.tab-btn:not(.active):hover { color: var(--text); border-color: var(--border); background: var(--bg3); }
+
+.install-panel { display: none; }
+.install-panel.active { display: block; }
+
+.install-block {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden;
+}
+.ib-head {
+  background: var(--bg3); border-bottom: 1px solid var(--border);
+  padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+}
+.ib-head-label { font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+.copy-btn {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  color: var(--muted); background: transparent; border: 1px solid var(--dim);
+  padding: 4px 12px; border-radius: 4px; cursor: pointer;
+  transition: all .2s; letter-spacing: .04em;
+}
+.copy-btn:hover { color: var(--green); border-color: rgba(0,255,157,.3); }
+.copy-btn.copied { color: var(--green); border-color: rgba(0,255,157,.4); }
+
+.ib-body { padding: 22px 24px; }
+.ib-body code {
+  display: block; font-family: var(--font-mono); font-size: 13px;
+  color: var(--cyan); line-height: 1.8; word-break: break-all;
+}
+.ib-body code .c-prompt { color: var(--green); user-select: none; }
+.ib-body code .c-cmd { color: var(--text); }
+.ib-body code .c-str { color: var(--cyan); }
+.ib-body code .c-flag { color: var(--purple); }
+.ib-body code .c-comment { color: var(--muted); }
+
+.install-note {
+  margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.6;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.install-note .note-icon { color: var(--yellow); flex-shrink: 0; margin-top: 1px; }
+
+/* ─── COMPARISON ──────────────────────────────────────────── */
+#compare { }
+
+.compare-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+}
+.compare-table th, .compare-table td {
+  padding: 16px 22px; text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.compare-table th {
+  font-family: var(--font-head); font-size: 12px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); background: var(--bg3);
+}
+.compare-table th.hl {
+  color: var(--green);
+  background: rgba(0,255,157,.06);
+}
+.compare-table td { color: var(--muted); vertical-align: middle; }
+.compare-table td.hl {
+  color: var(--text); font-weight: 500;
+  background: rgba(0,255,157,.03);
+}
+.compare-table td.hl strong { color: var(--green); }
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: rgba(255,255,255,.015); }
+.compare-table tr:hover td.hl { background: rgba(0,255,157,.05); }
+
+.badge-native {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--green); background: rgba(0,255,157,.08);
+  border: 1px solid rgba(0,255,157,.2); padding: 2px 9px; border-radius: 20px;
+}
+.badge-warn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--yellow); background: rgba(255,217,90,.07);
+  border: 1px solid rgba(255,217,90,.2); padding: 2px 9px; border-radius: 20px;
+}
+.badge-slow {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--red); background: rgba(255,75,110,.07);
+  border: 1px solid rgba(255,75,110,.2); padding: 2px 9px; border-radius: 20px;
+}
+.icon-no { color: var(--red); }
+.icon-yes { color: var(--green); }
+
+/* ─── CTA ─────────────────────────────────────────────────── */
+#cta {
+  text-align: center; padding: 100px 0;
+}
+.cta-glow {
+  position: relative; display: inline-block;
+  margin-bottom: 36px;
+}
+.cta-glow-ring {
+  position: absolute; inset: -60px;
+  background: radial-gradient(ellipse, rgba(0,255,157,.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-big {
+  font-family: var(--font-head); font-size: clamp(32px, 5vw, 52px);
+  font-weight: 800; line-height: 1.1; color: var(--text);
+  letter-spacing: -.02em; position: relative;
+}
+.cta-big .accent { color: var(--green); }
+
+.cta-sub { font-size: 16px; color: var(--muted); margin-bottom: 44px; }
+
+.cta-cmd {
+  display: inline-flex; align-items: center; gap: 14px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 22px;
+  margin-bottom: 48px;
+}
+.cta-cmd code { font-family: var(--font-mono); font-size: 13px; color: var(--cyan); }
+.cta-cmd .c-prompt { color: var(--green); user-select: none; }
+
+/* ─── FOOTER ──────────────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 36px 0; position: relative; z-index: 2;
+}
+.footer-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px;
+}
+.footer-brand {
+  font-family: var(--font-head); font-size: 14px; font-weight: 700;
+  color: var(--muted);
+}
+.footer-links { display: flex; gap: 20px; }
+.footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; transition: color .2s; }
+.footer-links a:hover { color: var(--green); }
+.footer-copy { font-size: 12px; color: var(--muted); }
+
+/* ─── ANIMATIONS ──────────────────────────────────────────── */
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .6; transform: scale(1.2); } }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scanline {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(100vh); }
+}
+@keyframes glitch1 {
+  0%   { clip-path: inset(10% 0 85% 0); transform: translateX(-3px); }
+  25%  { clip-path: inset(40% 0 50% 0); transform: translateX(3px); }
+  50%  { clip-path: inset(70% 0 20% 0); transform: translateX(-2px); }
+  75%  { clip-path: inset(20% 0 70% 0); transform: translateX(2px); }
+  100% { clip-path: inset(10% 0 85% 0); transform: translateX(-3px); }
+}
+
+/* scroll reveal */
+.reveal {
+  opacity: 0; transform: translateY(32px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+.reveal.visible { opacity: 1; transform: none; }
+.reveal-delay-1 { transition-delay: .1s; }
+.reveal-delay-2 { transition-delay: .2s; }
+.reveal-delay-3 { transition-delay: .3s; }
+
+/* ─── RESPONSIVE ──────────────────────────────────────────── */
+@media (max-width: 820px) {
+  nav { padding: 14px 20px; }
+  .nav-links { display: none; }
+  .hero-title { font-size: clamp(40px, 10vw, 72px); }
+  .problem-grid { grid-template-columns: 1fr; }
+  .solution-grid { grid-template-columns: 1fr; }
+  .arch-diagram { padding: 28px 20px; }
+  .arch-arrow .arr-line { width: 28px; }
+  .arch-box { min-width: 100px; padding: 14px 16px; }
+  .compare-table th, .compare-table td { padding: 12px 14px; font-size: 12px; }
+  .hero-cta { flex-direction: column; align-items: flex-start; }
+  .footer-inner { flex-direction: column; align-items: flex-start; }
 }
 </style>
 </head>
 <body>
 
-<!-- top bar -->
-<div id="topbar">
-  <div id="logo">claude-code-termux</div>
-  <div id="lang-btns">
-    <button class="lang-btn active" onclick="setLang('id')">ID</button>
-    <button class="lang-btn" onclick="setLang('en')">EN</button>
-    <button class="lang-btn" onclick="setLang('zh')">中文</button>
-    <button class="lang-btn" onclick="setLang('ja')">日本語</button>
+<!-- Animated background canvas -->
+<canvas id="canvas-bg"></canvas>
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-logo">
+    <span class="dot"></span>
+    CLAUDE / TERMUX
   </div>
-  <div id="counter">01 / 07</div>
-</div>
-
-<!-- stage -->
-<div id="stage">
-
-  <!-- ══ ID ══════════════════════════════════════════════════ -->
-
-  <div class="slide cover active" data-lang="id" data-idx="0">
-    <div class="grid-bg"></div>
-    <div class="tag">Open Source · ARM64 · Android</div>
-    <h1>Claude Code<span class="sub">/termux</span></h1>
-    <p class="desc">Jalankan Claude Code langsung di Android —<br>tanpa Ubuntu, tanpa emulator, tanpa cloud VM.</p>
-    <div class="cta-pill">github.com/DamnSit/claude-code-termux</div>
+  <div class="nav-links">
+    <a href="#problem">Problem</a>
+    <a href="#solution">Solution</a>
+    <a href="#arch">Architecture</a>
+    <a href="#install">Install</a>
+    <a href="#compare">Compare</a>
   </div>
+  <a href="https://github.com/DamnSit/claude-code-termux" target="_blank" class="nav-gh">GitHub →</a>
+</nav>
 
-  <div class="slide" data-lang="id" data-idx="1">
-    <div class="tag red">Masalah</div>
-    <h2>Claude Code tidak jalan<br>di Android</h2>
-    <div class="items">
-      <div class="item"><div class="item-num red">01</div><div><div class="item-title white">Binary glibc</div><div class="item-desc">Binary resmi Anthropic dikompilasi untuk glibc Linux — Android pakai Bionic libc yang beda ABI.</div></div></div>
-      <div class="item"><div class="item-num red">02</div><div><div class="item-title white">/tmp tidak ada</div><div class="item-desc">Claude Code hardcode /tmp untuk IPC & socket. Di Android path ini tidak tersedia.</div></div></div>
-      <div class="item"><div class="item-num red">03</div><div><div class="item-title white">Versi lama = terbatas</div><div class="item-desc">Workaround selama ini: pin ke v2.1.112 (JS only). Latest version tidak bisa jalan sama sekali.</div></div></div>
+<!-- HERO -->
+<section id="hero">
+  <div class="wrap">
+    <div class="hero-eyebrow">
+      <span class="hero-badge">Open Source · ARM64 · Android</span>
+      <span class="hero-badge-sub">Native binary. No emulator.</span>
+    </div>
+
+    <h1 class="hero-title">
+      <span class="line1">Claude Code</span>
+      <span class="line2">on Termux.</span>
+    </h1>
+
+    <p class="hero-sub">
+      Jalankan <strong>Claude Code</strong> langsung di Android ARM64 —
+      tanpa Ubuntu, tanpa proot-distro, tanpa cloud VM.
+      Satu command. Full native performance.
+    </p>
+
+    <div class="hero-cta">
+      <a href="#install" class="btn-primary">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2v14m0 0l-4-4m4 4l4-4M3 18h18"/></svg>
+        Install Sekarang
+      </a>
+      <a href="https://github.com/DamnSit/claude-code-termux" target="_blank" class="btn-ghost">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        GitHub
+      </a>
+    </div>
+
+    <div class="hero-terminal reveal">
+      <div class="terminal-bar">
+        <div class="tbar-dot r"></div>
+        <div class="tbar-dot y"></div>
+        <div class="tbar-dot g"></div>
+        <span class="tbar-title">termux — bash</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="t-prompt">$ </span><span class="t-cmd" id="typed-cmd"></span></div>
+        <div id="install-output" style="display:none">
+          <div><span class="t-out-dim">  ▸ Updating packages...</span></div>
+          <div><span class="t-out-ok">  ✓ nodejs-lts installed</span></div>
+          <div><span class="t-out-ok">  ✓ glibc-runner ready</span></div>
+          <div><span class="t-out-ok">  ✓ @anthropic-ai/claude-code-linux-arm64</span></div>
+          <div><span class="t-out-ok">  ✓ Platform patch applied (android → linux)</span></div>
+          <div><span class="t-out-dim">  ▸ Enter API key: </span><span class="t-out-ok">••••••••••••••••••••••••</span></div>
+          <div style="margin-top:8px"><span class="t-out-ok">  ╔══════════════════════════════╗</span></div>
+          <div><span class="t-out-ok">  ║ ✅ Claude Code siap digunakan! ║</span></div>
+          <div><span class="t-out-ok">  ╚══════════════════════════════╝</span></div>
+          <div style="margin-top:8px"><span class="t-prompt">$ </span><span class="t-cmd">claude</span></div>
+          <div><span class="t-out-ok">  Claude Code v1.x.x (Native ARM64)</span></div>
+          <div><span class="t-prompt">› </span><span class="t-cursor"></span></div>
+        </div>
+        <div id="cursor-line"><span class="t-cursor" id="typing-cursor"></span></div>
+      </div>
     </div>
   </div>
+</section>
 
-  <div class="slide" data-lang="id" data-idx="2">
-    <div class="tag">Solusi</div>
-    <h2>Native binary +<br>glibc-runner</h2>
-    <div class="items">
-      <div class="item"><div class="item-num green">⚡</div><div><div class="item-title green">glibc-runner</div><div class="item-desc">Jalankan binary glibc resmi langsung di Bionic via grun — tanpa full Linux environment.</div></div></div>
-      <div class="item"><div class="item-num green">🔧</div><div><div class="item-title green">Platform patch</div><div class="item-desc">Patch cli-wrapper.cjs & install.cjs: android → linux. Binary ARM64 resmi langsung terdeteksi.</div></div></div>
-      <div class="item"><div class="item-num green">🚀</div><div><div class="item-title green">Latest version</div><div class="item-desc">Bukan versi lama. Binary terbaru dari Anthropic, performa native penuh.</div></div></div>
+<div class="divider"></div>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="wrap">
+    <div class="section-label reveal">Masalah</div>
+    <h2 class="section-title reveal">Claude Code tidak jalan<br><em>di Android.</em></h2>
+    <p class="section-sub reveal">Tiga alasan kenapa install normal selalu gagal — dan kenapa workaround lama tidak cukup.</p>
+
+    <div class="problem-grid">
+      <div class="problem-card reveal reveal-delay-1">
+        <div class="prob-num">01 / 03</div>
+        <div class="prob-icon">⚙️</div>
+        <div class="prob-title">Binary glibc vs Bionic</div>
+        <p class="prob-text">Binary resmi Anthropic dikompilasi untuk glibc Linux. Android menggunakan Bionic libc dengan ABI berbeda — binary tidak bisa jalan langsung.</p>
+      </div>
+      <div class="problem-card reveal reveal-delay-2">
+        <div class="prob-num">02 / 03</div>
+        <div class="prob-icon">📁</div>
+        <div class="prob-title">/tmp tidak tersedia</div>
+        <p class="prob-text">Claude Code hardcode path <code>/tmp</code> untuk IPC socket dan temporary files. Path ini tidak ada di Android, menyebabkan crash saat startup.</p>
+      </div>
+      <div class="problem-card reveal reveal-delay-3">
+        <div class="prob-num">03 / 03</div>
+        <div class="prob-icon">⏳</div>
+        <div class="prob-title">Versi lama = fitur terbatas</div>
+        <p class="prob-text">Workaround selama ini: pin ke v2.1.112 (JS only, via node cli.js). Latest version dari Anthropic sama sekali tidak bisa dijalankan.</p>
+      </div>
     </div>
   </div>
+</section>
 
-  <div class="slide" data-lang="id" data-idx="3">
-    <div class="tag">Arsitektur</div>
-    <h2>Cara kerjanya</h2>
-    <div class="chain">
-      <div class="chain-node"><div class="cn">claude</div><div class="cs">alias di shell</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">grun</div><div class="cs">glibc-runner</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">linux-arm64</div><div class="cs">official binary</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">API</div><div class="cs">Anthropic / custom</div></div>
-    </div>
-    <div class="arch-note">Semua layer berjalan native di Termux tanpa VM atau container.</div>
-  </div>
+<div class="divider"></div>
 
-  <div class="slide" data-lang="id" data-idx="4">
-    <div class="tag">Install</div>
-    <h2>Pilih cara install<br>yang kamu mau.</h2>
-    <div style="margin-bottom:20px">
-      <div class="item-title" style="color:var(--green)">Option 1: Shell (Recommended)</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    </div>
-    <div style="margin-bottom:20px">
-      <div class="item-title" style="color:var(--green)">Option 2: NPM</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>pkg update && pkg install nodejs-lts && npm install -g @xurxuo/claude-code-termux</div>
-    </div>
-    <div>
-      <div class="item-title" style="color:var(--green)">Option 3: Rust Binary</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o $PREFIX/bin/claude && chmod +x $PREFIX/bin/claude</div>
-    </div>
-  </div>
+<!-- SOLUTION -->
+<section id="solution">
+  <div class="wrap">
+    <div class="section-label reveal">Solusi</div>
+    <h2 class="section-title reveal">Native binary +<br><em>glibc-runner.</em></h2>
+    <p class="section-sub reveal">Tiga layer yang bekerja bersama untuk menjalankan binary resmi Anthropic secara native di Termux.</p>
 
-  <div class="slide" data-lang="id" data-idx="5">
-    <div class="tag">Perbandingan</div>
-    <h2>vs setup lain</h2>
-    <table>
-      <thead><tr><th class="dim"></th><th class="hl">Repo ini</th><th class="dim">Pin v2.1.112</th><th class="dim">proot Ubuntu</th></tr></thead>
-      <tbody>
-        <tr><td>Binary</td><td class="hl">Native ARM64</td><td>JS (cli.js)</td><td>x86_64 emu</td></tr>
-        <tr><td>Versi</td><td class="hl">Latest</td><td>Lama (frozen)</td><td>Latest</td></tr>
-        <tr><td>Performa</td><td class="hl">🔥 Native</td><td>⚠️ Node.js</td><td>🐢 Emulasi</td></tr>
-        <tr><td>Ubuntu</td><td class="hl">❌ Tidak perlu</td><td>❌ Tidak perlu</td><td>✅ Dibutuhkan</td></tr>
-        <tr><td>Setup</td><td class="hl">1 command</td><td>Manual</td><td>Manual + besar</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="slide end" data-lang="id" data-idx="6">
-    <div class="grid-bg"></div>
-    <div class="tag">Android · ARM64 · No root · No emulator</div>
-    <h2>Mulai sekarang</h2>
-    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    <div class="links">
-      <div class="link-pill"><span>GitHub</span>github.com/DamnSit/claude-code-termux</div>
-      <div class="link-pill"><span>Troubleshooting</span>TROUBLESHOOTING.md</div>
+    <div class="solution-grid">
+      <div class="sol-card reveal reveal-delay-1">
+        <div class="sol-glyph">⚡</div>
+        <div class="sol-title">glibc-runner</div>
+        <p class="sol-text">Jalankan binary glibc resmi langsung di Android Bionic via <code>grun</code> — tanpa full Linux environment, tanpa proot-distro, tanpa Ubuntu.</p>
+        <span class="sol-tag">grun · Termux pkg</span>
+      </div>
+      <div class="sol-card reveal reveal-delay-2">
+        <div class="sol-glyph">🔧</div>
+        <div class="sol-title">Platform Patch</div>
+        <p class="sol-text">Auto-patch <code>cli-wrapper.cjs</code> & <code>install.cjs</code>: deteksi <code>android</code> → redirect ke <code>linux</code>. Official ARM64 binary langsung terdeteksi dengan benar.</p>
+        <span class="sol-tag">awk · in-place patch</span>
+      </div>
+      <div class="sol-card reveal reveal-delay-3">
+        <div class="sol-glyph">🚀</div>
+        <div class="sol-title">Latest Version</div>
+        <p class="sol-text">Bukan versi lama frozen. Binary ARM64 terbaru langsung dari npm <code>@anthropic-ai/claude-code-linux-arm64</code>, performa native penuh.</p>
+        <span class="sol-tag">npm latest · ARM64</span>
+      </div>
     </div>
   </div>
+</section>
 
-  <!-- ══ EN ══════════════════════════════════════════════════ -->
+<div class="divider"></div>
 
-  <div class="slide cover" data-lang="en" data-idx="0">
-    <div class="grid-bg"></div>
-    <div class="tag">Open Source · ARM64 · Android</div>
-    <h1>Claude Code<span class="sub">/termux</span></h1>
-    <p class="desc">Run Claude Code natively on Android —<br>no Ubuntu, no emulator, no cloud VM.</p>
-    <div class="cta-pill">github.com/DamnSit/claude-code-termux</div>
-  </div>
+<!-- ARCHITECTURE -->
+<section id="arch">
+  <div class="wrap">
+    <div class="section-label reveal">Arsitektur</div>
+    <h2 class="section-title reveal">Cara <em>keraktunya.</em></h2>
+    <p class="section-sub reveal">Semua layer berjalan native di Termux — tidak ada VM, tidak ada container, tidak ada overhead.</p>
 
-  <div class="slide" data-lang="en" data-idx="1">
-    <div class="tag red">The Problem</div>
-    <h2>Claude Code doesn't run<br>on Android</h2>
-    <div class="items">
-      <div class="item"><div class="item-num red">01</div><div><div class="item-title white">glibc binary</div><div class="item-desc">Anthropic's binary is compiled for glibc Linux — Android uses Bionic libc with a different ABI.</div></div></div>
-      <div class="item"><div class="item-num red">02</div><div><div class="item-title white">No /tmp</div><div class="item-desc">Claude Code hardcodes /tmp for IPC & sockets. That path doesn't exist on Android.</div></div></div>
-      <div class="item"><div class="item-num red">03</div><div><div class="item-title white">Old versions only</div><div class="item-desc">The workaround was pinning to v2.1.112 (JS only). Latest versions don't run at all.</div></div></div>
+    <div class="arch-diagram reveal">
+      <div class="arch-node">
+        <div class="arch-box">
+          <div class="ab-label">claude</div>
+          <div class="ab-sub">Shell alias</div>
+          <div class="ab-tech">~/.bashrc</div>
+        </div>
+      </div>
+      <div class="arch-arrow">
+        <div class="arr-line"></div>
+        <div class="arr-label">calls</div>
+      </div>
+      <div class="arch-node">
+        <div class="arch-box">
+          <div class="ab-label">grun</div>
+          <div class="ab-sub">glibc-runner</div>
+          <div class="ab-tech">Bionic bridge</div>
+        </div>
+      </div>
+      <div class="arch-arrow">
+        <div class="arr-line"></div>
+        <div class="arr-label">loads</div>
+      </div>
+      <div class="arch-node">
+        <div class="arch-box">
+          <div class="ab-label">linux-arm64</div>
+          <div class="ab-sub">Official binary</div>
+          <div class="ab-tech">Anthropic NPM</div>
+        </div>
+      </div>
+      <div class="arch-arrow">
+        <div class="arr-line"></div>
+        <div class="arr-label">calls</div>
+      </div>
+      <div class="arch-node">
+        <div class="arch-box">
+          <div class="ab-label">API</div>
+          <div class="ab-sub">Anthropic</div>
+          <div class="ab-tech">custom endpoint ✓</div>
+        </div>
+      </div>
+      <p class="arch-foot">
+        <strong>100% native.</strong> Tidak ada emulasi, tidak ada container. Binary ARM64 resmi berjalan langsung di hardware.
+      </p>
     </div>
   </div>
+</section>
 
-  <div class="slide" data-lang="en" data-idx="2">
-    <div class="tag">Solution</div>
-    <h2>Native binary +<br>glibc-runner</h2>
-    <div class="items">
-      <div class="item"><div class="item-num green">⚡</div><div><div class="item-title green">glibc-runner</div><div class="item-desc">Run the official glibc binary directly on Bionic via grun — no full Linux environment needed.</div></div></div>
-      <div class="item"><div class="item-num green">🔧</div><div><div class="item-title green">Platform patch</div><div class="item-desc">Patch cli-wrapper.cjs & install.cjs: android → linux. Official ARM64 binary gets detected correctly.</div></div></div>
-      <div class="item"><div class="item-num green">🚀</div><div><div class="item-title green">Latest version</div><div class="item-desc">Not some old frozen build. Latest Anthropic binary, full native performance.</div></div></div>
+<div class="divider"></div>
+
+<!-- INSTALL -->
+<section id="install">
+  <div class="wrap">
+    <div class="section-label reveal">Install</div>
+    <h2 class="section-title reveal">Pilih cara <em>install.</em></h2>
+    <p class="section-sub reveal">Tiga opsi tersedia. Shell script direkomendasikan — handle semua setup otomatis.</p>
+
+    <div class="reveal">
+      <div class="install-tabs">
+        <button class="tab-btn active" onclick="switchTab('shell', this)">Shell (Recommended)</button>
+        <button class="tab-btn" onclick="switchTab('npm', this)">NPM</button>
+        <button class="tab-btn" onclick="switchTab('secure', this)">Secure (Checksum)</button>
+      </div>
+
+      <!-- Shell -->
+      <div class="install-panel active" id="panel-shell">
+        <div class="install-block">
+          <div class="ib-head">
+            <span class="ib-head-label">bash · termux</span>
+            <button class="copy-btn" onclick="copyCmd(this, 'curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash')">Copy</button>
+          </div>
+          <div class="ib-body">
+            <code>
+              <span class="c-prompt">$ </span><span class="c-cmd">curl <span class="c-flag">-fsSL</span> <span class="c-str">https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh</span> | bash</span>
+            </code>
+          </div>
+        </div>
+        <div class="install-note">
+          <span class="note-icon">ℹ</span>
+          <span>Installer akan handle: pkg update, deps (nodejs-lts, glibc-runner), npm install, platform patch, API key input, alias setup. Setelah selesai: <code>source ~/.bashrc && claude</code></span>
+        </div>
+      </div>
+
+      <!-- NPM -->
+      <div class="install-panel" id="panel-npm">
+        <div class="install-block">
+          <div class="ib-head">
+            <span class="ib-head-label">npm · termux</span>
+            <button class="copy-btn" onclick="copyCmd(this, 'pkg update && pkg install nodejs-lts && npm install -g @xurxuo/claude-code-termux')">Copy</button>
+          </div>
+          <div class="ib-body">
+            <code>
+              <span class="c-prompt">$ </span><span class="c-cmd">pkg update && pkg install <span class="c-str">nodejs-lts</span></span><br>
+              <span class="c-prompt">$ </span><span class="c-cmd">npm install <span class="c-flag">-g</span> <span class="c-str">@xurxuo/claude-code-termux</span></span>
+            </code>
+          </div>
+        </div>
+        <div class="install-note">
+          <span class="note-icon">ℹ</span>
+          <span>Install via NPM registry. Package wrapper yang handle setup otomatis. Sama dengan shell method tapi via npm.</span>
+        </div>
+      </div>
+
+      <!-- Secure -->
+      <div class="install-panel" id="panel-secure">
+        <div class="install-block">
+          <div class="ib-head">
+            <span class="ib-head-label">bash · verified · termux</span>
+            <button class="copy-btn" onclick="copyCmd(this, 'curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install-secure.sh | bash')">Copy</button>
+          </div>
+          <div class="ib-body">
+            <code>
+              <span class="c-prompt">$ </span><span class="c-cmd">curl <span class="c-flag">-fsSL</span> <span class="c-str">https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install-secure.sh</span> | bash</span>
+            </code>
+          </div>
+        </div>
+        <div class="install-note">
+          <span class="note-icon">⚠</span>
+          <span><strong>Recommended.</strong> Verifies SHA256 checksums sebelum eksekusi. Lebih aman terhadap MITM attack. Checksums: <code>CHECKSUMS.txt</code></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom endpoint note -->
+    <div class="install-block reveal" style="margin-top:32px">
+      <div class="ib-head">
+        <span class="ib-head-label">~/.claude/settings.json — custom endpoint</span>
+        <button class="copy-btn" onclick="copyCmd(this, JSON.stringify({env:{ANTHROPIC_BASE_URL:'https://opencode.ai/zen',ANTHROPIC_MODEL:'claude-sonnet-4-5',ANTHROPIC_API_KEY:'sk-ant-...'}},null,2))">Copy</button>
+      </div>
+      <div class="ib-body">
+        <code>
+          {<br>
+          &nbsp;&nbsp;<span class="c-str">"env"</span>: {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-str">"ANTHROPIC_BASE_URL"</span>: <span class="c-flag">"https://opencode.ai/zen"</span>,<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-str">"ANTHROPIC_MODEL"</span>: <span class="c-flag">"claude-sonnet-4-5"</span>,<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="c-str">"ANTHROPIC_API_KEY"</span>: <span class="c-flag">"sk-ant-..."</span><br>
+          &nbsp;&nbsp;},<br>
+          &nbsp;&nbsp;<span class="c-str">"autoUpdatesChannel"</span>: <span class="c-flag">"latest"</span><br>
+          }
+        </code>
+      </div>
     </div>
   </div>
+</section>
 
-  <div class="slide" data-lang="en" data-idx="3">
-    <div class="tag">Architecture</div>
-    <h2>How it works</h2>
-    <div class="chain">
-      <div class="chain-node"><div class="cn">claude</div><div class="cs">shell alias</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">grun</div><div class="cs">glibc-runner</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">linux-arm64</div><div class="cs">official binary</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">API</div><div class="cs">Anthropic / custom</div></div>
-    </div>
-    <div class="arch-note">All layers run natively in Termux — no VM, no container.</div>
-  </div>
+<div class="divider"></div>
 
-  <div class="slide" data-lang="en" data-idx="4">
-    <div class="tag">Install</div>
-    <h2>Choose your<br>install method.</h2>
-    <div style="margin-bottom:20px">
-      <div class="item-title" style="color:var(--green)">Option 1: Shell (Recommended)</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    </div>
-    <div style="margin-bottom:20px">
-      <div class="item-title" style="color:var(--green)">Option 2: NPM</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>pkg update && pkg install nodejs-lts && npm install -g @xurxuo/claude-code-termux</div>
-    </div>
-    <div>
-      <div class="item-title" style="color:var(--green)">Option 3: Rust Binary</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o $PREFIX/bin/claude && chmod +x $PREFIX/bin/claude</div>
-    </div>
-  </div>
+<!-- COMPARISON -->
+<section id="compare">
+  <div class="wrap">
+    <div class="section-label reveal">Perbandingan</div>
+    <h2 class="section-title reveal">vs <em>setup lain.</em></h2>
+    <p class="section-sub reveal">Kenapa ini berbeda dari workaround yang sudah ada sebelumnya.</p>
 
-  <div class="slide" data-lang="en" data-idx="5">
-    <div class="tag">Comparison</div>
-    <h2>vs other setups</h2>
-    <table>
-      <thead><tr><th class="dim"></th><th class="hl">This repo</th><th class="dim">Pin v2.1.112</th><th class="dim">proot Ubuntu</th></tr></thead>
-      <tbody>
-        <tr><td>Binary</td><td class="hl">Native ARM64</td><td>JS (cli.js)</td><td>x86_64 emulated</td></tr>
-        <tr><td>Version</td><td class="hl">Latest</td><td>Frozen old</td><td>Latest</td></tr>
-        <tr><td>Performance</td><td class="hl">🔥 Native</td><td>⚠️ Node.js</td><td>🐢 Emulated</td></tr>
-        <tr><td>Ubuntu</td><td class="hl">❌ Not needed</td><td>❌ Not needed</td><td>✅ Required</td></tr>
-        <tr><td>Setup</td><td class="hl">1 command</td><td>Manual</td><td>Manual + large</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="slide end" data-lang="en" data-idx="6">
-    <div class="grid-bg"></div>
-    <div class="tag">Android · ARM64 · No root · No emulator</div>
-    <h2>Get started</h2>
-    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    <div class="links">
-      <div class="link-pill"><span>GitHub</span>github.com/DamnSit/claude-code-termux</div>
-      <div class="link-pill"><span>Troubleshooting</span>TROUBLESHOOTING.md</div>
-    </div>
-  </div>
-
-  <!-- ══ ZH ══════════════════════════════════════════════════ -->
-
-  <div class="slide cover" data-lang="zh" data-idx="0">
-    <div class="grid-bg"></div>
-    <div class="tag">开源 · ARM64 · Android</div>
-    <h1>Claude Code<span class="sub">/termux</span></h1>
-    <p class="desc">在 Android 上原生运行 Claude Code —<br>无需 Ubuntu，无需模拟器，无需云服务器。</p>
-    <div class="cta-pill">github.com/DamnSit/claude-code-termux</div>
-  </div>
-
-  <div class="slide" data-lang="zh" data-idx="1">
-    <div class="tag red">问题</div>
-    <h2>Claude Code 无法在<br>Android 上运行</h2>
-    <div class="items">
-      <div class="item"><div class="item-num red">01</div><div><div class="item-title white">glibc 二进制</div><div class="item-desc">Anthropic 官方二进制为 glibc Linux 编译 — Android 使用 Bionic libc，ABI 不同。</div></div></div>
-      <div class="item"><div class="item-num red">02</div><div><div class="item-title white">无 /tmp 路径</div><div class="item-desc">Claude Code 硬编码 /tmp 用于 IPC，该路径在 Android 上不存在。</div></div></div>
-      <div class="item"><div class="item-num red">03</div><div><div class="item-title white">只能用旧版本</div><div class="item-desc">以往解决方案是锁定 v2.1.112（纯 JS）。最新版本完全无法运行。</div></div></div>
+    <div class="reveal" style="overflow-x:auto">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Aspek</th>
+            <th class="hl">Repo ini ✦</th>
+            <th>Pin v2.1.112</th>
+            <th>proot Ubuntu</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Binary</td>
+            <td class="hl"><span class="badge-native">🔥 Native ARM64</span></td>
+            <td>JS (cli.js via node)</td>
+            <td>x86_64 emulated</td>
+          </tr>
+          <tr>
+            <td>Versi</td>
+            <td class="hl"><strong>Latest</strong></td>
+            <td>Frozen (lama)</td>
+            <td>Latest</td>
+          </tr>
+          <tr>
+            <td>Performa</td>
+            <td class="hl"><span class="badge-native">🔥 Native</span></td>
+            <td><span class="badge-warn">⚠ Node.js</span></td>
+            <td><span class="badge-slow">🐢 Emulasi</span></td>
+          </tr>
+          <tr>
+            <td>Butuh Ubuntu</td>
+            <td class="hl"><span class="icon-no">✗</span> Tidak perlu</td>
+            <td><span class="icon-no">✗</span> Tidak perlu</td>
+            <td><span class="icon-yes">✓</span> Dibutuhkan</td>
+          </tr>
+          <tr>
+            <td>Setup</td>
+            <td class="hl"><strong>1 command</strong></td>
+            <td>Manual + banyak step</td>
+            <td>Manual + besar (1GB+)</td>
+          </tr>
+          <tr>
+            <td>Custom endpoint</td>
+            <td class="hl"><span class="icon-yes">✓</span> Built-in</td>
+            <td><span class="icon-no">✗</span> —</td>
+            <td>Manual</td>
+          </tr>
+          <tr>
+            <td>Startup time</td>
+            <td class="hl"><strong>Fast (native)</strong></td>
+            <td>Slow (Node init)</td>
+            <td>Very slow (proot)</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
+</section>
 
-  <div class="slide" data-lang="zh" data-idx="2">
-    <div class="tag">解决方案</div>
-    <h2>原生二进制 +<br>glibc-runner</h2>
-    <div class="items">
-      <div class="item"><div class="item-num green">⚡</div><div><div class="item-title green">glibc-runner</div><div class="item-desc">通过 grun 在 Bionic 上直接运行官方 glibc 二进制 — 无需完整 Linux 环境。</div></div></div>
-      <div class="item"><div class="item-num green">🔧</div><div><div class="item-title green">平台补丁</div><div class="item-desc">修补 cli-wrapper.cjs 和 install.cjs：android → linux。官方 ARM64 二进制即可正确被识别。</div></div></div>
-      <div class="item"><div class="item-num green">🚀</div><div><div class="item-title green">最新版本</div><div class="item-desc">不是旧的冻结版本，最新 Anthropic 二进制，完整原生性能。</div></div></div>
+<div class="divider"></div>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="wrap">
+    <div class="cta-glow">
+      <div class="cta-glow-ring"></div>
+      <h2 class="cta-big reveal">
+        Mulai sekarang.<br>
+        <span class="accent">Satu command.</span>
+      </h2>
+    </div>
+    <p class="cta-sub reveal">Android ARM64 · No root · No emulator · No Ubuntu</p>
+
+    <div class="cta-cmd reveal">
+      <code><span class="c-prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install-secure.sh | bash</code>
+      <button class="copy-btn" onclick="copyCmd(this, 'curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install-secure.sh | bash')" style="flex-shrink:0">Copy</button>
+    </div>
+
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;" class="reveal">
+      <a href="https://github.com/DamnSit/claude-code-termux" target="_blank" class="btn-primary">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        View on GitHub
+      </a>
+      <a href="https://github.com/DamnSit/claude-code-termux/blob/main/TROUBLESHOOTING.md" target="_blank" class="btn-ghost">
+        Troubleshooting →
+      </a>
     </div>
   </div>
+</section>
 
-  <div class="slide" data-lang="zh" data-idx="3">
-    <div class="tag">架构</div>
-    <h2>运行原理</h2>
-    <div class="chain">
-      <div class="chain-node"><div class="cn">claude</div><div class="cs">Shell 别名</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">grun</div><div class="cs">glibc-runner</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">linux-arm64</div><div class="cs">官方二进制</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">API</div><div class="cs">Anthropic / 自定义</div></div>
-    </div>
-    <div class="arch-note">所有层在 Termux 中原生运行 — 无虚拟机，无容器。</div>
-  </div>
-
-  <div class="slide" data-lang="zh" data-idx="4">
-    <div class="tag">安装</div>
-    <h2>选择你的<br>安装方式。</h2>
-    <div style="margin-bottom:20px">
-      <div class="item-title" style="color:var(--green)">选项 1: Shell (推荐)</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    </div>
-    <div style="margin-bottom:20px">
-      <div class="item-title" style="color:var(--green)">选项 2: NPM</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>pkg update && pkg install nodejs-lts && npm install -g @xurxuo/claude-code-termux</div>
-    </div>
-    <div>
-      <div class="item-title" style="color:var(--green)">选项 3: Rust 二进制</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o $PREFIX/bin/claude && chmod +x $PREFIX/bin/claude</div>
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <div class="footer-brand">CLAUDE · TERMUX</div>
+      <div class="footer-links">
+        <a href="https://github.com/DamnSit/claude-code-termux" target="_blank">GitHub</a>
+        <a href="https://github.com/DamnSit/claude-code-termux/blob/main/TROUBLESHOOTING.md" target="_blank">Troubleshooting</a>
+        <a href="https://console.anthropic.com/settings/keys" target="_blank">API Keys</a>
+      </div>
+      <div class="footer-copy">Open Source · MIT · ARM64 Android</div>
     </div>
   </div>
-
-  <div class="slide" data-lang="zh" data-idx="5">
-    <div class="tag">对比</div>
-    <h2>与其他方案对比</h2>
-    <table>
-      <thead><tr><th class="dim"></th><th class="hl">本仓库</th><th class="dim">锁定 v2.1.112</th><th class="dim">proot Ubuntu</th></tr></thead>
-      <tbody>
-        <tr><td>二进制</td><td class="hl">原生 ARM64</td><td>JS (cli.js)</td><td>x86_64 模拟</td></tr>
-        <tr><td>版本</td><td class="hl">最新</td><td>旧版（冻结）</td><td>最新</td></tr>
-        <tr><td>性能</td><td class="hl">🔥 原生</td><td>⚠️ Node.js</td><td>🐢 模拟</td></tr>
-        <tr><td>Ubuntu</td><td class="hl">❌ 不需要</td><td>❌ 不需要</td><td>✅ 必需</td></tr>
-        <tr><td>安装</td><td class="hl">1 条命令</td><td>手动</td><td>手动 + 大</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="slide end" data-lang="zh" data-idx="6">
-    <div class="grid-bg"></div>
-    <div class="tag">Android · ARM64 · 无需 root · 无需模拟器</div>
-    <h2>立即开始</h2>
-    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    <div class="links">
-      <div class="link-pill"><span>GitHub</span>github.com/DamnSit/claude-code-termux</div>
-      <div class="link-pill"><span>问题排查</span>TROUBLESHOOTING.md</div>
-    </div>
-  </div>
-
-  <!-- ══ JA ══════════════════════════════════════════════════ -->
-
-  <div class="slide cover" data-lang="ja" data-idx="0">
-    <div class="grid-bg"></div>
-    <div class="tag">オープンソース · ARM64 · Android</div>
-    <h1>Claude Code<span class="sub">/termux</span></h1>
-    <p class="desc">AndroidでClaude Codeをネイティブ実行 —<br>Ubuntu不要、エミュレータ不要。</p>
-    <div class="cta-pill">github.com/DamnSit/claude-code-termux</div>
-  </div>
-
-  <div class="slide" data-lang="ja" data-idx="1">
-    <div class="tag red">問題</div>
-    <h2>Claude Codeが<br>Androidで動かない</h2>
-    <div class="items">
-      <div class="item"><div class="item-num red">01</div><div><div class="item-title white">glibcバイナリ</div><div class="item-desc">AnthropicのバイナリはglibcのLinux向けにコンパイル済み — AndroidのBionicとはABIが異なります。</div></div></div>
-      <div class="item"><div class="item-num red">02</div><div><div class="item-title white">/tmpが存在しない</div><div class="item-desc">Claude Codeは/tmpをハードコード。Androidには存在しないためIPC通信が失敗します。</div></div></div>
-      <div class="item"><div class="item-num red">03</div><div><div class="item-title white">古いバージョンのみ</div><div class="item-desc">v2.1.112（JS専用）に固定するしかなかった。最新版は全く動作しません。</div></div></div>
-    </div>
-  </div>
-
-  <div class="slide" data-lang="ja" data-idx="2">
-    <div class="tag">解決策</div>
-    <h2>ネイティブバイナリ +<br>glibc-runner</h2>
-    <div class="items">
-      <div class="item"><div class="item-num green">⚡</div><div><div class="item-title green">glibc-runner</div><div class="item-desc">grunを使ってBionicで直接官方glibcバイナリを実行 — フルLinux環境は不要。</div></div></div>
-      <div class="item"><div class="item-num green">🔧</div><div><div class="item-title green">プラットフォームパッチ</div><div class="item-desc">cli-wrapper.cjsとinstall.cjsをパッチ：android → linux。ARM64バイナリが正しく認識されます。</div></div></div>
-      <div class="item"><div class="item-num green">🚀</div><div><div class="item-title green">最新バージョン</div><div class="item-desc">古い凍結バージョンではなく、最新Anthropicバイナリでフルネイティブ性能。</div></div></div>
-    </div>
-  </div>
-
-  <div class="slide" data-lang="ja" data-idx="3">
-    <div class="tag">アーキテクチャ</div>
-    <h2>仕組み</h2>
-    <div class="chain">
-      <div class="chain-node"><div class="cn">claude</div><div class="cs">シェルエイリアス</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">grun</div><div class="cs">glibc-runner</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">linux-arm64</div><div class="cs">公式バイナリ</div></div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-node"><div class="cn">API</div><div class="cs">Anthropic / カスタム</div></div>
-    </div>
-    <div class="arch-note">全レイヤーがTermuxでネイティブ実行 — VMもコンテナも不要。</div>
-  </div>
-
-  <div class="slide" data-lang="ja" data-idx="4">
-    <div class="tag">インストール</div>
-    <h2>インストール方法<br>を選択。</h2>
-    <div style="margin-bottom:20px">
-      <div class="item-title" style="color:var(--green)">オプション 1: Shell (推奨)</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    </div>
-    <div style="margin-bottom:20px">
-      <div class="item-title" style="color:var(--green)">オプション 2: NPM</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>pkg update && pkg install nodejs-lts && npm install -g @xurxuo/claude-code-termux</div>
-    </div>
-    <div>
-      <div class="item-title" style="color:var(--green)">オプション 3: Rustバイナリ</div>
-      <div class="code-block" style="margin-top:8px"><span class="prompt">$ </span>curl -fsSL https://github.com/DamnSit/claude-code-termux/releases/latest/download/claude-termux -o $PREFIX/bin/claude && chmod +x $PREFIX/bin/claude</div>
-    </div>
-  </div>
-
-  <div class="slide" data-lang="ja" data-idx="5">
-    <div class="tag">比較</div>
-    <h2>他のセットアップとの比較</h2>
-    <table>
-      <thead><tr><th class="dim"></th><th class="hl">このリポジトリ</th><th class="dim">v2.1.112固定</th><th class="dim">proot Ubuntu</th></tr></thead>
-      <tbody>
-        <tr><td>バイナリ</td><td class="hl">ネイティブARM64</td><td>JS (cli.js)</td><td>x86_64エミュ</td></tr>
-        <tr><td>バージョン</td><td class="hl">最新</td><td>旧版（凍結）</td><td>最新</td></tr>
-        <tr><td>パフォーマンス</td><td class="hl">🔥 ネイティブ</td><td>⚠️ Node.js</td><td>🐢 エミュ</td></tr>
-        <tr><td>Ubuntu</td><td class="hl">❌ 不要</td><td>❌ 不要</td><td>✅ 必要</td></tr>
-        <tr><td>セットアップ</td><td class="hl">1コマンド</td><td>手動</td><td>手動 + 大容量</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="slide end" data-lang="ja" data-idx="6">
-    <div class="grid-bg"></div>
-    <div class="tag">Android · ARM64 · root不要 · エミュレータ不要</div>
-    <h2>今すぐ始める</h2>
-    <div class="code-block"><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh | bash</div>
-    <div class="links">
-      <div class="link-pill"><span>GitHub</span>github.com/DamnSit/claude-code-termux</div>
-      <div class="link-pill"><span>トラブル</span>TROUBLESHOOTING.md</div>
-    </div>
-  </div>
-
-</div><!-- /stage -->
-
-<!-- nav -->
-<div id="nav">
-  <button class="nav-btn prev" id="btn-prev" onclick="go(-1)" disabled>← prev</button>
-  <div id="dots"></div>
-  <button class="nav-btn next" id="btn-next" onclick="go(1)">next →</button>
-</div>
+</footer>
 
 <script>
-const TOTAL = 7;
-let lang = 'id', idx = 0;
+/* ─── CANVAS RAIN ─────────────────────────────────────────── */
+(function() {
+  const canvas = document.getElementById('canvas-bg');
+  const ctx = canvas.getContext('2d');
+  let W, H, cols, drops;
+  const chars = '01アイウエオカキクケコサシスセソ{}[]<>/\\|'.split('');
 
-function slides(l){ return document.querySelectorAll(`.slide[data-lang="${l}"]`); }
-function allSlides(){ return document.querySelectorAll('.slide'); }
-
-function render(){
-  allSlides().forEach(s => s.classList.remove('active'));
-  const s = document.querySelector(`.slide[data-lang="${lang}"][data-idx="${idx}"]`);
-  if(s) s.classList.add('active');
-
-  document.getElementById('counter').textContent =
-    String(idx+1).padStart(2,'0') + ' / ' + String(TOTAL).padStart(2,'0');
-
-  document.getElementById('btn-prev').disabled = idx === 0;
-  document.getElementById('btn-next').disabled = idx === TOTAL-1;
-
-  const dots = document.getElementById('dots');
-  dots.innerHTML = '';
-  for(let i=0;i<TOTAL;i++){
-    const d = document.createElement('button');
-    d.className = 'dot' + (i===idx?' active':'');
-    d.onclick = ()=>{ idx=i; render(); };
-    dots.appendChild(d);
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    cols = Math.floor(W / 22);
+    drops = Array(cols).fill(0).map(() => Math.random() * -H);
   }
 
-  document.querySelectorAll('.lang-btn').forEach(b=>{
-    b.classList.toggle('active', b.textContent.trim().toLowerCase()===lang||
-      (b.textContent.trim()==='中文'&&lang==='zh')||
-      (b.textContent.trim()==='日本語'&&lang==='ja'));
-  });
-}
+  function draw() {
+    ctx.fillStyle = 'rgba(6,6,8,0.08)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.font = '13px JetBrains Mono, monospace';
 
-function go(d){ idx = Math.max(0,Math.min(TOTAL-1,idx+d)); render(); }
+    drops.forEach((y, i) => {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const x = i * 22;
+      const bright = y > 0 && y < H * .15;
+      ctx.fillStyle = bright ? 'rgba(0,255,157,0.9)' : 'rgba(0,255,157,0.25)';
+      ctx.fillText(char, x, y);
+      drops[i] += 18;
+      if (drops[i] > H + 50) drops[i] = Math.random() * -200;
+    });
+  }
 
-function setLang(l){ lang=l; idx=0; render(); }
+  resize();
+  window.addEventListener('resize', resize);
+  setInterval(draw, 60);
+})();
 
-document.addEventListener('keydown', e=>{
-  if(e.key==='ArrowRight'||e.key==='ArrowDown') go(1);
-  if(e.key==='ArrowLeft'||e.key==='ArrowUp') go(-1);
+/* ─── NAVBAR SCROLL ──────────────────────────────────────── */
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
 });
 
-render();
+/* ─── TYPING ANIMATION ───────────────────────────────────── */
+(function() {
+  const cmd = 'curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install-secure.sh | bash';
+  const el = document.getElementById('typed-cmd');
+  const cur = document.getElementById('typing-cursor');
+  const out = document.getElementById('install-output');
+  const cursorLine = document.getElementById('cursor-line');
+  let i = 0;
+  let started = false;
+
+  function type() {
+    if (i < cmd.length) {
+      el.textContent += cmd[i++];
+      setTimeout(type, 28 + Math.random() * 22);
+    } else {
+      cur.style.display = 'none';
+      setTimeout(() => {
+        cursorLine.style.display = 'none';
+        out.style.display = 'block';
+      }, 400);
+    }
+  }
+
+  function startIfVisible() {
+    if (started) return;
+    const rect = document.getElementById('hero').getBoundingClientRect();
+    if (rect.top < window.innerHeight) {
+      started = true;
+      setTimeout(type, 800);
+    }
+  }
+
+  window.addEventListener('scroll', startIfVisible);
+  startIfVisible();
+})();
+
+/* ─── SCROLL REVEAL ───────────────────────────────────────── */
+(function() {
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+})();
+
+/* ─── TAB SWITCH ─────────────────────────────────────────── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.install-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ─── COPY ───────────────────────────────────────────────── */
+function copyCmd(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  });
+}
 </script>
 </body>
 </html>
