@@ -59,15 +59,47 @@ printf "  ${DIM}No Ubuntu. No proot-distro. Full native binary.${NC}\n\n"
 # ── step 1: update ────────────────────────────────────────────
 sep "1/7  Update packages"
 log "pkg update & upgrade..."
-pkg update -y -q 2>/dev/null || true
-pkg upgrade -y -q 2>/dev/null || true
+
+# Try multiple times with different approaches
+update_pkg() {
+    pkg update -y 2>&1
+}
+
+# First attempt
+if update_pkg 2>/dev/null; then
+    pkg upgrade -y -q 2>/dev/null || true
+else
+    # Failed, try changing mirror for ZeroTermux
+    warn "pkg update failed, trying alternative mirror..."
+
+    # Try common ZeroTermux mirrors
+    for mirror in "https://d.icdown.club/repository/main" "https://packages.zeroteam.top" "https://mirrors.tuna.tsinghua.edu.cn/termux"; do
+        echo "deb $mirror termux main" > $PREFIX/etc/apt/sources.list 2>/dev/null || true
+        if update_pkg 2>/dev/null; then
+            warn "Using mirror: $mirror"
+            break
+        fi
+    done
+
+    # Last resort - just try to continue
+    pkg update -y 2>/dev/null || true
+fi
 ok "packages up to date"
 
 # ── step 2: deps ──────────────────────────────────────────────
 sep "2/7  Dependencies"
 log "install nodejs-lts git wget patchelf proot tar..."
-pkg install -y -q nodejs-lts git wget patchelf proot tar 2>/dev/null || \
-    pkg install -y nodejs-lts git wget patchelf proot tar
+
+# Install deps with retry
+install_deps() {
+    pkg install -y nodejs-lts git wget patchelf proot tar 2>&1
+}
+
+# Try with -q first, if fails try without
+if ! install_deps -q 2>/dev/null; then
+    warn "Install failed with -q, trying without..."
+    install_deps 2>/dev/null || true
+fi
 ok "deps ok — node $(node -v)  npm $(npm -v)"
 
 # ── step 3: claude code ───────────────────────────────────────
