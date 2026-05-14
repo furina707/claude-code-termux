@@ -84,6 +84,14 @@ function readPackageJson(pkg) {
   }
 }
 
+function getNativePackage(info) {
+  const native = readPackageJson(info.pkg)
+  return {
+    ...native,
+    binaryPath: path.join(native.dir, info.bin),
+  }
+}
+
 function compareVersions(a, b) {
   const left = String(a).split(/[.-]/).map((part) => Number.parseInt(part, 10) || 0)
   const right = String(b).split(/[.-]/).map((part) => Number.parseInt(part, 10) || 0)
@@ -184,13 +192,23 @@ function getBinaryPath(options = {}) {
   }
   refreshNativePackage(info, options.forceUpdate)
   try {
-    const pkgDir = readPackageJson(info.pkg).dir
-    return path.join(pkgDir, info.bin)
+    let native = getNativePackage(info)
+    if (!fs.existsSync(native.binaryPath)) {
+      console.error(
+        `[${WRAPPER_NAME}] Native binary missing; reinstalling ${info.pkg}@latest...`,
+      )
+      npmInstallLatest([info.pkg])
+      native = getNativePackage(info)
+    }
+    if (!fs.existsSync(native.binaryPath)) {
+      throw new Error('native binary missing after install')
+    }
+    return native.binaryPath
   } catch {
     console.error(
       `[${WRAPPER_NAME}] Could not find native binary package "${info.pkg}".`,
     )
-    console.error('  Try reinstalling with: npm install')
+    console.error('  Try reinstalling with: npm install -g --force ' + info.pkg + '@latest')
     process.exit(1)
   }
 }
@@ -209,6 +227,20 @@ function main() {
     stdio: 'inherit',
     env: { ...process.env, CLAUDE_CODE_INSTALLED_VIA_NPM_WRAPPER: '1' },
   })
+  if (result.error && result.error.code === 'ENOENT') {
+    const retryPath = getBinaryPath({ forceUpdate: true })
+    const retry = spawnSync(retryPath, args, {
+      stdio: 'inherit',
+      env: { ...process.env, CLAUDE_CODE_INSTALLED_VIA_NPM_WRAPPER: '1' },
+    })
+    if (!retry.error) {
+      if (retry.signal) {
+        const signum = constants.signals[retry.signal] ?? 0
+        process.exit(128 + signum)
+      }
+      process.exit(retry.status ?? 1)
+    }
+  }
   if (result.error) {
     console.error(
       `[${WRAPPER_NAME}] Failed to execute native binary at ` + binaryPath,

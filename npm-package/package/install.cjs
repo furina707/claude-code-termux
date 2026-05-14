@@ -3,6 +3,7 @@
 // Patches: android -> linux for platform detection
 
 const { spawnSync } = require('child_process')
+const fs = require('fs')
 const { arch } = require('os')
 const path = require('path')
 
@@ -86,6 +87,13 @@ function installLatestNativePackage(pkg) {
   return result.status === 0
 }
 
+function getNativePackage(pkg, bin) {
+  const pkgDir = path.dirname(require.resolve(pkg + '/package.json'))
+  const pkgJson = require(path.join(pkgDir, 'package.json'))
+  const binaryPath = path.join(pkgDir, bin)
+  return { pkgDir, pkgJson, binaryPath }
+}
+
 function npmViewLatest(pkg) {
   const command = process.env.npm_execpath ? process.execPath : 'npm'
   const args = process.env.npm_execpath
@@ -122,13 +130,15 @@ function main() {
   }
 
   try {
-    const pkgDir = path.dirname(require.resolve(info.pkg + '/package.json'))
-    const pkgJson = require(path.join(pkgDir, 'package.json'))
+    const native = getNativePackage(info.pkg, info.bin)
     console.error(
-      `[${WRAPPER_NAME} postinstall] Native package ready: ${info.pkg}@${pkgJson.version}`,
+      `[${WRAPPER_NAME} postinstall] Native package ready: ${info.pkg}@${native.pkgJson.version}`,
     )
     const latest = npmViewLatest(info.pkg)
-    if (latest && compareVersions(latest, pkgJson.version) > 0) {
+    if (
+      !fs.existsSync(native.binaryPath) ||
+      (latest && compareVersions(latest, native.pkgJson.version) > 0)
+    ) {
       installLatestNativePackage(info.pkg)
     }
   } catch {
