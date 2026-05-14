@@ -58,6 +58,45 @@ bash install.sh
 
 ---
 
+## GPG Signature Verification (Most Secure)
+
+All scripts are **cryptographically signed** with GPG. Verify the signature to ensure the scripts are authentic and from the author:
+
+```bash
+# 1. Import author's GPG public key
+gpg --keyserver keyserver.ubuntu.com --search-keys dimarlin65@gmail.com
+# Or import directly:
+curl -fsSL https://github.com/DamnSit.gpg | gpg --import
+
+# 2. Download script and signature
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/install.sh.asc -o install.sh.asc
+
+# 3. Verify signature
+gpg --verify install.sh.asc install.sh
+
+# 4. If "gpg: Good signature" appears, it's verified!
+```
+
+### Verify All Scripts at Once:
+```bash
+for script in install.sh install-secure.sh install-simple.sh claude-wrapper.sh uninstall.sh; do
+    curl -fsSL "https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/$script" -o "$script"
+    curl -fsSL "https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/$script.asc" -o "$script.asc"
+    gpg --verify "$script.asc" "$script" && echo "✓ $script" || echo "✗ $script FAILED"
+done
+```
+
+### GPG Key Info:
+| Field | Value |
+|-------|-------|
+| **Key ID** | `63788A3CE203C94C` |
+| **Fingerprint** | `6330DDFEF6C0B831A26699C863788A3CE203C94C` |
+| **Email** | dimarlin65@gmail.com |
+| **Owner** | DamnSit |
+
+---
+
 ## Alternative: Install via NPM
 
 ```bash
@@ -205,7 +244,8 @@ chmod +x $PREFIX/bin/claude
 ## Security
 
 ### What we do to protect you:
-- **Checksum verification** — verify scripts before running
+- **GPG Signature Verification** — all scripts are cryptographically signed (see above)
+- **Checksum verification** — SHA256 checksums available for integrity check
 - **Secure file permissions** — settings.json protected with `chmod 600`
 - **JSON injection prevention** — use `jq` for safe JSON building
 - **No arbitrary code execution** — scripts only run documented commands
