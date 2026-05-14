@@ -110,6 +110,16 @@ npm install -g @anthropic-ai/claude-code \
 [[ -d "$CC_DIR" ]] || die "claude-code install failed"
 ok "installed → $CC_DIR"
 
+# ── CRITICAL: Overwrite npm's wrapper with our grun wrapper ──
+WRAPPER="${PREFIX}/bin/claude"
+rm -f "$WRAPPER"
+cat > "$WRAPPER" << 'WRAPPER_EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+exec grun /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/claude "$@"
+WRAPPER_EOF
+chmod +x "$WRAPPER"
+log "Wrapper installed"
+
 # ── step 4: linux arm64 binary ────────────────────────────────
 sep "4/7  Install native Linux ARM64 binary"
 log "Installing native binary..."
