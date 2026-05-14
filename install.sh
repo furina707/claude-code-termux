@@ -322,62 +322,18 @@ ok "~/.claude/settings.json (permissions: 600)"
 MARK="# claude-code-termux"
 TMPDIR_LINE="export TMPDIR=\"\${TMPDIR:-${PREFIX}/tmp}\""
 
-# Remove old symlink from npm (if exists)
+# Remove old symlink from npm (if exists) - force remove any type
 WRAPPER_DST="${PREFIX}/bin/claude"
-if [[ -L "$WRAPPER_DST" ]] || [[ -f "$WRAPPER_DST" ]]; then
-    rm -f "$WRAPPER_DST"
-    log "Removed old npm symlink"
-fi
+rm -f "$WRAPPER_DST"
+echo "  ✓ Cleaned old wrapper/symlink"
 
-# Create wrapper
-WRAPPER_DST="${PREFIX}/bin/claude"
-
+# Create simple wrapper
 cat > "$WRAPPER_DST" << 'WRAPPER_EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-# Claude Code Termux Wrapper
-
-CLAUDE_BINARY="/data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/claude"
-
-# Check if grun exists
-if ! command -v grun &>/dev/null; then
-    echo "Error: grun not found. Install: pkg install grun"
-    exit 1
-fi
-
-# Check if binary exists
-if [[ ! -f "$CLAUDE_BINARY" ]]; then
-    echo "Error: binary not found. Re-run install script."
-    exit 1
-fi
-
-case "$1" in
-  --version|-v)
-    exec grun "$CLAUDE_BINARY" --version
-    ;;
-  --update|-update|update)
-    echo "🔄 Updating..."
-    # Download latest binary directly
-    mkdir -p "$(dirname "$CLAUDE_BINARY")"
-    VERSION=$(npm view @anthropic-ai/claude-code-linux-arm64 version 2>/dev/null)
-    curl -fSL "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-${VERSION}.tgz" -o /tmp/claude.tgz 2>/dev/null && \
-    tar -xzf /tmp/claude.tgz -C "$(dirname "$CLAUDE_BINARY")" 2>/dev/null && \
-    mv "$(dirname "$CLAUDE_BINARY")/package/bin/claude" "$CLAUDE_BINARY" 2>/dev/null && \
-    rm -rf "$(dirname "$CLAUDE_BINARY")/package" /tmp/claude.tgz
-    echo "✓ Done"
-    ;;
-  --uninstall|-uninstall|uninstall)
-    curl -fsSL https://raw.githubusercontent.com/DamnSit/claude-code-termux/main/uninstall.sh | bash
-    ;;
-  --help|-h|"")
-    echo "Usage: claude [--version|--update|--uninstall|--help] [args...]"
-    ;;
-  *)
-    exec grun "$CLAUDE_BINARY" "$@"
-    ;;
-esac
+exec grun /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/claude "$@"
 WRAPPER_EOF
 chmod +x "$WRAPPER_DST"
-ok "wrapper → $WRAPPER_DST"
+echo "  ✓ wrapper → $WRAPPER_DST"
 
 # Add to shell rc - remove old alias first
 for rc in "$BASHRC" "$ZSHRC"; do
