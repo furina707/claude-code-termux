@@ -10,11 +10,7 @@
 
 <p align="center">
   <a href="https://starmapper.bruniaux.com/DamnSit/claude-code-termux">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://starmapper.bruniaux.com/api/map-image/DamnSit/claude-code-termux?theme=dark" />
-      <source media="(prefers-color-scheme: light)" srcset="https://starmapper.bruniaux.com/api/map-image/DamnSit/claude-code-termux?theme=light" />
-      <img alt="StarMapper" src="https://starmapper.bruniaux.com/api/map-image/DamnSit/claude-code-termux" />
-    </picture>
+    <img alt="StarMapper" src="https://starmapper.bruniaux.com/api/map-image/DamnSit/claude-code-termux?theme=light" />
   </a>
 </p>
 
