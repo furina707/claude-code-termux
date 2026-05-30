@@ -65,7 +65,11 @@ Force an update any time:
 
 ```bash
 claude update
+claude --update
+claude -update
 ```
+
+All three commands do the same thing — force an immediate update of the native Claude Code package.
 
 Disable daily auto-checks:
 
