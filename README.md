@@ -1,5 +1,13 @@
 # Claude Code Termux
 
+![npm version](https://img.shields.io/npm/v/@xurxuo/claude-code-termux?style=flat-square&color=blue)
+![npm downloads (monthly)](https://img.shields.io/npm/dm/@xurxuo/claude-code-termux?style=flat-square&color=brightgreen&label=Monthly%20Downloads)
+![npm downloads (total)](https://img.shields.io/npm/dt/@xurxuo/claude-code-termux?style=flat-square&color=orange&label=Total%20Downloads)
+![npm downloads (weekly)](https://img.shields.io/npm/dw/@xurxuo/claude-code-termux?style=flat-square&label=Weekly)
+![license](https://img.shields.io/npm/l/@xurxuo/claude-code-termux?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/DamnSit/claude-code-termux?style=flat-square&color=yellow)
+![GitHub forks](https://img.shields.io/github/forks/DamnSit/claude-code-termux?style=flat-square)
+
 Run Claude Code natively on Android ARM64 with Termux.
 
 This project makes the official Anthropic Linux ARM64 Claude Code binary usable on Android by launching it through `glibc-runner` (`grun`). You do not need Ubuntu, proot, a cloud VM, or a desktop computer.
