@@ -173,6 +173,24 @@ claude
 | `claude update` | Force update the native Claude Code package |
 | `claude --update` | Same as `claude update` |
 | `claude -update` | Same as `claude update` |
+| `claude --dangerously-skip-permissions` | Skip all permission prompts (⚠️ see warning below) |
+
+> **⚠️ Warning: `--dangerously-skip-permissions`**
+>
+> This flag disables **all safety prompts**. Claude Code will execute file edits, shell commands, and system operations **without asking for confirmation**.
+>
+> **Risks:**
+> - Destructive file changes (overwrite, delete) without confirmation
+> - Arbitrary shell commands executed automatically
+> - Potential data loss if Claude makes mistakes
+> - No opportunity to review or reject changes
+>
+> **Only use this if:**
+> - You are running in a sandboxed/isolated environment
+> - You fully trust the task and have backups
+> - You are running automated CI/CD scripts
+>
+> **Never use this on production systems or with important data without backups.**
 
 ## Uninstall
 
