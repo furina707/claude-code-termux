@@ -12,7 +12,7 @@ claude --version
 claude
 ```
 
-This package does not run a `postinstall` script. The native Claude Code
+This package runs a `postinstall` script that auto-installs required Termux dependencies (glibc-runner, ripgrep, git). The native Claude Code
 binary is installed or repaired only when you run `claude` or `claude update`.
 
 ## Termux Patches
