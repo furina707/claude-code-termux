@@ -7,6 +7,42 @@ const fs = require('fs')
 const { arch } = require('os')
 const path = require('path')
 
+function isTermux() {
+  return (
+    process.platform === 'android' ||
+    (process.env.PREFIX || '').includes('com.termux') ||
+    fs.existsSync('/data/data/com.termux/files/usr/bin/pkg')
+  )
+}
+
+function binExists(bin) {
+  const r = spawnSync('which', [bin], { encoding: 'utf8' })
+  return r.status === 0 && r.stdout.trim().length > 0
+}
+
+function ensureTermuxDeps() {
+  const REQUIRED = [
+    { pkg: 'glibc-runner', bin: 'grun' },
+    { pkg: 'ripgrep',      bin: 'rg'   },
+    { pkg: 'git',          bin: 'git'  },
+  ]
+  const missing = REQUIRED.filter(({ bin }) => !binExists(bin))
+  if (missing.length === 0) return
+  console.error(`[@xurxuo/claude-code-termux] Installing ${missing.length} missing Termux dep(s)...`)
+  spawnSync('pkg', ['update', '-y'], { stdio: 'pipe' })
+  for (const { pkg, bin } of missing) {
+    console.error(`[@xurxuo/claude-code-termux]   pkg install ${pkg} -y`)
+    const r = spawnSync('pkg', ['install', pkg, '-y'], { stdio: 'inherit' })
+    if (r.status !== 0) {
+      console.error(`[@xurxuo/claude-code-termux] WARNING: failed to install ${pkg}`)
+    } else {
+      console.error(`[@xurxuo/claude-code-termux]   ✓ ${pkg}`)
+    }
+  }
+}
+
+if (isTermux()) ensureTermuxDeps()
+
 const PACKAGE_PREFIX = '@anthropic-ai/claude-code'
 const BINARY_NAME = 'claude'
 const WRAPPER_NAME = require('./package.json').name
