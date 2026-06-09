@@ -2,17 +2,22 @@
 // Termux/Android patched postinstall
 // Patches: android -> linux for platform detection
 
+console.error('[@xurxuo/claude-code-termux] Running postinstall script...')
+
 const { spawnSync } = require('child_process')
 const fs = require('fs')
 const { arch } = require('os')
 const path = require('path')
 
 function isTermux() {
-  return (
-    process.platform === 'android' ||
-    (process.env.PREFIX || '').includes('com.termux') ||
-    fs.existsSync('/data/data/com.termux/files/usr/bin/pkg')
-  )
+  const checks = {
+    platform: process.platform === 'android',
+    prefix: (process.env.PREFIX || '').includes('com.termux'),
+    pkgExists: fs.existsSync('/data/data/com.termux/files/usr/bin/pkg'),
+  }
+  const result = checks.platform || checks.prefix || checks.pkgExists
+  console.error(`[@xurxuo/claude-code-termux] Termux detection: ${result ? 'YES' : 'NO'} (platform=${checks.platform}, prefix=${checks.prefix}, pkg=${checks.pkgExists})`)
+  return result
 }
 
 function binExists(bin) {
@@ -21,23 +26,62 @@ function binExists(bin) {
 }
 
 function ensureTermuxDeps() {
+  console.error(`[@xurxuo/claude-code-termux] Checking Termux dependencies...`)
+
   const REQUIRED = [
     { pkg: 'glibc-runner', bin: 'grun' },
     { pkg: 'ripgrep',      bin: 'rg'   },
     { pkg: 'git',          bin: 'git'  },
   ]
-  const missing = REQUIRED.filter(({ bin }) => !binExists(bin))
-  if (missing.length === 0) return
-  console.error(`[@xurxuo/claude-code-termux] Installing ${missing.length} missing Termux dep(s)...`)
-  spawnSync('pkg', ['update', '-y'], { stdio: 'pipe' })
+
+  const missing = []
+  for (const dep of REQUIRED) {
+    const exists = binExists(dep.bin)
+    console.error(`[@xurxuo/claude-code-termux]   ${dep.bin}: ${exists ? '✓ found' : '✗ missing'}`)
+    if (!exists) {
+      missing.push(dep)
+    }
+  }
+
+  if (missing.length === 0) {
+    console.error(`[@xurxuo/claude-code-termux] All dependencies present.`)
+    return
+  }
+
+  console.error(`[@xurxuo/claude-code-termux] Installing ${missing.length} missing Termux package(s)...`)
+  console.error(`[@xurxuo/claude-code-termux] Running: pkg update -y`)
+  const updateResult = spawnSync('pkg', ['update', '-y'], { stdio: 'inherit' })
+  if (updateResult.status !== 0) {
+    console.error(`[@xurxuo/claude-code-termux] WARNING: pkg update failed, continuing anyway...`)
+  }
+
   for (const { pkg, bin } of missing) {
-    console.error(`[@xurxuo/claude-code-termux]   pkg install ${pkg} -y`)
+    console.error(`[@xurxuo/claude-code-termux] Installing: ${pkg}`)
     const r = spawnSync('pkg', ['install', pkg, '-y'], { stdio: 'inherit' })
     if (r.status !== 0) {
-      console.error(`[@xurxuo/claude-code-termux] WARNING: failed to install ${pkg}`)
+      console.error(`[@xurxuo/claude-code-termux] ✗ FAILED to install ${pkg}`)
+      console.error(`[@xurxuo/claude-code-termux]   You may need to run manually: pkg install ${pkg}`)
     } else {
-      console.error(`[@xurxuo/claude-code-termux]   ✓ ${pkg}`)
+      // Verify it actually installed
+      if (binExists(bin)) {
+        console.error(`[@xurxuo/claude-code-termux] ✓ ${pkg} installed successfully`)
+      } else {
+        console.error(`[@xurxuo/claude-code-termux] ⚠ ${pkg} installed but ${bin} not found in PATH`)
+      }
     }
+  }
+
+  // Final verification
+  console.error(`[@xurxuo/claude-code-termux] Final verification...`)
+  const stillMissing = REQUIRED.filter(({ bin }) => !binExists(bin))
+  if (stillMissing.length > 0) {
+    console.error(`[@xurxuo/claude-code-termux] ⚠ WARNING: Some dependencies still missing:`)
+    for (const { pkg, bin } of stillMissing) {
+      console.error(`[@xurxuo/claude-code-termux]   - ${bin} (from ${pkg})`)
+    }
+    console.error(`[@xurxuo/claude-code-termux] Please run manually: pkg install ${stillMissing.map(d => d.pkg).join(' ')}`)
+  } else {
+    console.error(`[@xurxuo/claude-code-termux] ✓ All dependencies installed successfully`)
   }
 }
 
