@@ -179,6 +179,7 @@ claude
 | `claude update` | Force update the native Claude Code package |
 | `claude --update` | Same as `claude update` |
 | `claude -update` | Same as `claude update` |
+| `claude manager` | Open the interactive management menu |
 | `claude --dangerously-skip-permissions` | Skip all permission prompts (⚠️ see warning below) |
 
 > **⚠️ Warning: `--dangerously-skip-permissions`**
@@ -197,6 +198,19 @@ claude
 > - You are running automated CI/CD scripts
 >
 > **Never use this on production systems or with important data without backups.**
+
+## Management Menu
+
+Run `claude manager` for an interactive TUI with the following options:
+
+- **View Status** — Show installed versions, update state, API key status, grun availability
+- **Check Updates** — Check for available updates without installing
+- **Update Packages** — Force update the wrapper and native package
+- **Manage API Key** — View masked key status and update API key in `~/.bashrc`
+- **Reinstall** — Full reinstall (uninstall + fresh install)
+- **Uninstall** — Remove Claude Code from Termux
+- **Open Docs** — Open the GitHub repo in your browser
+- **About** — Version and project information
 
 ## Uninstall
 

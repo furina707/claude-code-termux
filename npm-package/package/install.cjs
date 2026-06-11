@@ -224,10 +224,24 @@ function main() {
   } catch {
     if (!installLatestNativePackage(info.pkg)) {
       console.error(
-        `[${WRAPPER_NAME} postinstall] Native package "${info.pkg}" not found and latest install failed.`,
+        `[${WRAPPER_NAME}] postinstall] Native package "${info.pkg}" not found and latest install failed.`,
       )
       console.error('  Try again with: npm install -g --force ' + info.pkg + '@latest')
       process.exitCode = 1
+    }
+  }
+
+  // Write the proper Node wrapper to /usr/bin/claude so both shell-install
+  // and npm-install users get the same handler (update, manager, etc.)
+  if (isTermux()) {
+    const WRAPPER_PATH = '/data/data/com.termux/files/usr/bin/claude'
+    const CL_WRAPPER = require.resolve('./cli-wrapper.cjs')
+    const CONTENT = `#!/data/data/com.termux/files/usr/bin/env node\nrequire(${JSON.stringify(CL_WRAPPER)})\n`
+    try {
+      fs.writeFileSync(WRAPPER_PATH, CONTENT, { mode: 0o755 })
+      console.error(`[${WRAPPER_NAME}] Wrapper installed at ${WRAPPER_PATH}`)
+    } catch (e) {
+      console.error(`[${WRAPPER_NAME}] WARNING: could not write wrapper: ${e.message}`)
     }
   }
 }

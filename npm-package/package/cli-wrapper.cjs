@@ -7,6 +7,7 @@ const { arch, constants } = require('os')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
+const readline = require('readline')
 
 const PACKAGE_PREFIX = '@anthropic-ai/claude-code'
 const BINARY_NAME = 'claude'
@@ -225,12 +226,289 @@ function runNative(binaryPath, args) {
   return spawnSync(binaryPath, args, { stdio: 'inherit', env })
 }
 
-function main() {
+// ─── Manager TUI ──────────────────────────────────────────────────────────────
+
+const C = { reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m', cyan: '\x1b[36m', white: '\x1b[37m' }
+const WIDTH = 50
+
+function header(title) {
+  const pad = Math.max(0, Math.floor((WIDTH - title.length - 2) / 2))
+  return `${C.cyan}${C.bold}${'═'.repeat(WIDTH)}${C.reset}\n${C.cyan}║${' '.repeat(pad)}${C.reset}${C.white}${C.bold}${title}${C.reset}${C.cyan}${' '.repeat(WIDTH - pad - title.length - 2)}║${C.reset}\n${C.cyan}${C.bold}${'═'.repeat(WIDTH)}${C.reset}`
+}
+
+function bar(label, value, color) {
+  const c = C[color] || C.white
+  const maxVal = WIDTH - label.length - value.length - 8
+  const barLen = Math.min(maxVal, Math.max(0, maxVal))
+  return `  ${c}${label}:${C.reset} ${value} ${c}${'█'.repeat(barLen)}${C.reset}`
+}
+
+function spawnOutput(cmd, args, opts = {}) {
+  const r = spawnSync(cmd, args, { encoding: 'utf8', shell: false, ...opts })
+  return { stdout: r.stdout || '', stderr: r.stderr || '', code: r.status || 0 }
+}
+
+function npm(args, silent = false) {
+  const cmd = process.env.npm_execpath ? process.execPath : 'npm'
+  const a = process.env.npm_execpath ? [process.env.npm_execpath, ...args] : args
+  const opts = silent ? { encoding: 'utf8', stdio: silent ? 'pipe' : 'inherit' } : { stdio: 'inherit' }
+  return spawnSync(cmd, a, opts)
+}
+
+function ask(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise((res) => { rl.question(question, (ans) => { rl.close(); res(ans) }) })
+}
+
+function npmViewPkg(pkg) {
+  const r = spawnOutput('npm', ['view', pkg, 'version', '--silent'])
+  return r.code === 0 ? r.stdout.trim() : null
+}
+
+function appendToBashrc(line) {
+  try {
+    const rc = path.join(os.homedir(), '.bashrc')
+    const content = fs.readFileSync(rc, 'utf8')
+    const filtered = content.split('\n').filter(l => !/^export\s+ANTHROPIC_API_KEY=/.test(l)).join('\n')
+    fs.writeFileSync(rc, filtered + '\n' + line + '\n')
+  } catch (e) {
+    console.error(`  ${C.red}Failed to write .bashrc: ${e.message}${C.reset}`)
+  }
+}
+
+// ─── Manager action functions ─────────────────────────────────────────────────
+
+async function managerStatus() {
+  console.clear()
+  console.log(header('📊 STATUS'))
+  console.log('')
+
+  let wrapperVer = 'unknown'
+  try { wrapperVer = require('/data/data/com.termux/files/usr/lib/node_modules/@xurxuo/claude-code-termux/package.json').version } catch {}
+  let nativeVer = 'unknown'
+  try { nativeVer = require('/data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/package.json').version } catch {}
+
+  console.log(bar('Wrapper', `@xurxuo/claude-code-termux v${wrapperVer}`, 'cyan'))
+  console.log(bar('Claude Binary', `v${nativeVer}`, 'cyan'))
+
+  const latestWrapper = npmViewPkg('@xurxuo/claude-code-termux')
+  const latestNative = npmViewPkg('@anthropic-ai/claude-code-linux-arm64')
+  console.log(bar('Latest Wrapper', latestWrapper ? `v${latestWrapper}` : 'unavailable', latestWrapper && latestWrapper !== wrapperVer ? 'yellow' : 'green'))
+  console.log(bar('Latest Native', latestNative ? `v${latestNative}` : 'unavailable', latestNative && latestNative !== nativeVer ? 'yellow' : 'green'))
+
+  let lastCheck = 'never'
+  try {
+    const state = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.cache/claude-code-termux/update-check.json'), 'utf8'))
+    if (state.lastChecked) lastCheck = new Date(Number(state.lastChecked)).toLocaleString()
+  } catch {}
+  console.log(bar('Last Update Check', lastCheck, 'dim'))
+
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN || ''
+  const keyStatus = apiKey ? `${apiKey.slice(0, 9)}...` : `${C.yellow}not set${C.reset}`
+  console.log(bar('API Key', keyStatus, apiKey ? 'green' : 'yellow'))
+
+  const grun = spawnOutput('which', ['grun']).stdout.trim()
+  console.log(bar('glibc-runner (grun)', grun ? `✓ ${grun}` : `${C.red}✗ not found${C.reset}`, grun ? 'green' : 'red'))
+
+  console.log('')
+  await ask(`${C.dim}Press Enter to continue...${C.reset}`)
+}
+
+async function managerCheckUpdates() {
+  console.clear()
+  console.log(header('🔍 CHECK UPDATES'))
+  console.log('')
+
+  const wrapperCurr = (() => { try { return require('/data/data/com.termux/files/usr/lib/node_modules/@xurxuo/claude-code-termux/package.json').version } catch { return null } })()
+  const nativeCurr = (() => { try { return require('/data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/package.json').version } catch { return null } })()
+  const latestWrapper = npmViewPkg('@xurxuo/claude-code-termux')
+  const latestNative = npmViewPkg('@anthropic-ai/claude-code-linux-arm64')
+
+  const items = [
+    ['Wrapper (@xurxuo/claude-code-termux)', wrapperCurr, latestWrapper],
+    ['Native (@anthropic-ai/claude-code-linux-arm64)', nativeCurr, latestNative],
+  ]
+
+  let hasUpdate = false
+  for (const [name, curr, latest] of items) {
+    if (!latest) console.log(`  ${C.red}✗${C.reset} ${name}: ${C.red}Could not fetch${C.reset}`)
+    else if (!curr) { console.log(`  ${C.yellow}○${C.reset} ${name}: ${C.yellow}not installed${C.reset} → latest: v${latest}`); hasUpdate = true }
+    else if (curr !== latest) { console.log(`  ${C.yellow}↑${C.reset} ${name}: v${curr} → ${C.green}v${latest}${C.reset} ${C.green}(update available)${C.reset}`); hasUpdate = true }
+    else console.log(`  ${C.green}✓${C.reset} ${name}: v${curr} ${C.green}(up to date)${C.reset}`)
+  }
+
+  console.log('')
+  if (hasUpdate) console.log(`  ${C.yellow}Updates available! Run "Update Packages" to upgrade.${C.reset}`)
+  else console.log(`  ${C.green}All packages are up to date.${C.reset}`)
+
+  console.log('')
+  await ask(`${C.dim}Press Enter to continue...${C.reset}`)
+}
+
+async function managerUpdatePackages() {
+  console.clear()
+  console.log(header('⬆️ UPDATE PACKAGES'))
+  console.log('')
+  console.log(`  ${C.cyan}Updating @xurxuo/claude-code-termux...${C.reset}`)
+  const r1 = npm(['install', '-g', '--force', '@xurxuo/claude-code-termux@latest'])
+  console.log(`  ${r1.status === 0 ? C.green + '✓' : C.red + '✗'} Wrapper ${r1.status === 0 ? 'updated' : 'update failed'}${C.reset}`)
+  console.log('')
+  console.log(`  ${C.cyan}Updating @anthropic-ai/claude-code-linux-arm64...${C.reset}`)
+  const r2 = npm(['install', '-g', '--force', '@anthropic-ai/claude-code-linux-arm64@latest'])
+  console.log(`  ${r2.status === 0 ? C.green + '✓' : C.red + '✗'} Native ${r2.status === 0 ? 'updated' : 'update failed'}${C.reset}`)
+  console.log('')
+  await ask(`${C.dim}Press Enter to continue...${C.reset}`)
+}
+
+async function managerApiKey() {
+  console.clear()
+  console.log(header('🔑 MANAGE API KEY'))
+  console.log('')
+
+  const envKey = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN || ''
+  let bashrcKey = ''
+  try {
+    const lines = fs.readFileSync(path.join(os.homedir(), '.bashrc'), 'utf8').split('\n')
+    for (const l of lines) {
+      const m = l.match(/^export\s+ANTHROPIC_API_KEY=(.+)/)
+      if (m) { bashrcKey = m[1].replace(/^['"]|['"]$/g, ''); break }
+    }
+  } catch {}
+
+  const key = envKey || bashrcKey
+  if (key) {
+    console.log(`  Current key: ${C.green}${key.slice(0, 9)}...${C.reset}`)
+    console.log('')
+    const ans = await ask(`  ${C.yellow}Enter new API key (or press Enter to skip): ${C.reset}`)
+    if (ans.trim()) { appendToBashrc(`export ANTHROPIC_API_KEY=${ans.trim()}`); console.log(`  ${C.green}✓ API key saved to ~/.bashrc${C.reset}`) }
+    else console.log(`  ${C.dim}No changes made.${C.reset}`)
+  } else {
+    console.log(`  ${C.yellow}No API key found.${C.reset}`)
+    console.log('')
+    const ans = await ask(`  ${C.cyan}Enter your API key: ${C.reset}`)
+    if (ans.trim()) { appendToBashrc(`export ANTHROPIC_API_KEY=${ans.trim()}`); console.log(`  ${C.green}✓ API key saved to ~/.bashrc${C.reset}`) }
+  }
+  console.log('')
+  await ask(`${C.dim}Press Enter to continue...${C.reset}`)
+}
+
+async function managerReinstall() {
+  console.clear()
+  console.log(header('🔄 REINSTALL'))
+  console.log('')
+  const ans = await ask(`  ${C.yellow}This will remove and reinstall both packages. Continue? (type 'yes'): ${C.reset}`)
+  if (ans.trim().toLowerCase() !== 'yes') { console.log(`  ${C.dim}Cancelled.${C.reset}`); await ask(`${C.dim}Press Enter to continue...${C.reset}`); return }
+  console.log('')
+  console.log(`  ${C.cyan}Uninstalling...${C.reset}`)
+  npm(['uninstall', '-g', '@xurxuo/claude-code-termux', '@anthropic-ai/claude-code-linux-arm64'])
+  console.log('')
+  console.log(`  ${C.cyan}Installing...${C.reset}`)
+  npm(['install', '-g', '--force', '@xurxuo/claude-code-termux@latest'])
+  console.log('')
+  console.log(`  ${C.green}✓ Reinstall complete!${C.reset}`)
+  await ask(`${C.dim}Press Enter to continue...${C.reset}`)
+}
+
+async function managerUninstall() {
+  console.clear()
+  console.log(header('🗑️  UNINSTALL'))
+  console.log('')
+  const ans = await ask(`  ${C.red}Type 'yes' to confirm uninstall: ${C.reset}`)
+  if (ans.trim().toLowerCase() !== 'yes') { console.log(`  ${C.dim}Cancelled.${C.reset}`); await ask(`${C.dim}Press Enter to continue...${C.reset}`); return }
+  console.log('')
+  console.log(`  ${C.cyan}Uninstalling packages...${C.reset}`)
+  npm(['uninstall', '-g', '@xurxuo/claude-code-termux', '@anthropic-ai/claude-code-linux-arm64'])
+  try { fs.unlinkSync('/data/data/com.termux/files/usr/bin/claude') } catch {}
+  console.log('')
+  console.log(`  ${C.green}✓ Uninstall complete!${C.reset}`)
+  await ask(`${C.dim}Press Enter to continue...${C.reset}`)
+}
+
+async function managerOpenDocs() {
+  console.clear()
+  console.log(header('📖 OPEN DOCUMENTATION'))
+  console.log('')
+  console.log('  Opening GitHub repo in browser...')
+  spawnSync('am', ['start', 'https://github.com/DamnSit/claude-code-termux'], { stdio: 'ignore' })
+  await ask(`${C.dim}Press Enter to continue...${C.reset}`)
+}
+
+async function managerAbout() {
+  console.clear()
+  console.log(header('ℹ️  ABOUT'))
+  console.log('')
+  let wrapperVer = 'unknown'; try { wrapperVer = require('/data/data/com.termux/files/usr/lib/node_modules/@xurxuo/claude-code-termux/package.json').version } catch {}
+  let nativeVer = 'unknown'; try { nativeVer = require('/data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/package.json').version } catch {}
+  console.log(`  ${C.bold}@xurxuo/claude-code-termux${C.reset} v${wrapperVer}`)
+  console.log(`  ${C.dim}Claude Code native binary${C.reset}  v${nativeVer}`)
+  console.log('')
+  console.log(`  ${C.dim}Run Claude Code natively on Android ARM64 with Termux.${C.reset}`)
+  console.log(`  ${C.dim}No Ubuntu, proot, cloud VM, or desktop needed.${C.reset}`)
+  console.log('')
+  console.log(`  ${C.dim}Maintainer:${C.reset} t.me/XurXuo`)
+  console.log(`  ${C.dim}GitHub:${C.reset} github.com/DamnSit/claude-code-termux`)
+  console.log('')
+  await ask(`${C.dim}Press Enter to continue...${C.reset}`)
+}
+
+const MANAGER_ITEMS = [
+  { label: 'View Status',       icon: '📊', fn: managerStatus },
+  { label: 'Check Updates',     icon: '🔍', fn: managerCheckUpdates },
+  { label: 'Update Packages',   icon: '⬆️', fn: managerUpdatePackages },
+  { label: 'Manage API Key',    icon: '🔑', fn: managerApiKey },
+  { label: 'Reinstall',         icon: '🔄', fn: managerReinstall },
+  { label: 'Uninstall',         icon: '🗑️', fn: managerUninstall },
+  { label: 'Open Docs',         icon: '📖', fn: managerOpenDocs },
+  { label: 'About',             icon: 'ℹ️', fn: managerAbout },
+]
+
+async function runManager() {
+  process.stdout.write('\x1b[?1049h')
+  let choice = ''
+  try {
+    while (choice !== '0') {
+      console.clear()
+      console.log(header('MANAGER'))
+      console.log('')
+      console.log(`  ${C.dim}Select an option:${C.reset}`)
+      console.log('')
+      for (let i = 0; i < MANAGER_ITEMS.length; i++) {
+        console.log(`  ${C.cyan}${String(i + 1).padStart(2)}.${C.reset} ${MANAGER_ITEMS[i].icon} ${MANAGER_ITEMS[i].label}`)
+      }
+      console.log('')
+      console.log(`  ${C.red} 0. Exit${C.reset}`)
+      console.log('')
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+      choice = await new Promise((res) => { rl.question(`${C.cyan}> ${C.reset}`, (ans) => { rl.close(); res(ans.trim()) }) })
+      const idx = parseInt(choice, 10) - 1
+      if (idx >= 0 && idx < MANAGER_ITEMS.length) {
+        console.clear()
+        try { await MANAGER_ITEMS[idx].fn() } catch (e) {
+          console.error(`${C.red}Error: ${e.message}${C.reset}`)
+          await ask(`${C.dim}Press Enter to continue...${C.reset}`)
+        }
+      } else if (choice !== '0') {
+        await ask(`${C.yellow}Invalid option. Press Enter...${C.reset}`)
+      }
+    }
+  } finally {
+    process.stdout.write('\x1b[?1049l')
+  }
+}
+
+// ─── Main entry ───────────────────────────────────────────────────────────────
+
+async function main() {
   const args = process.argv.slice(2)
   const forceUpdate = args[0] === 'update' || args[0] === '--update' || args[0] === '-update'
 
   if (forceUpdate) {
     getBinaryPath({ forceUpdate: true })
+    process.exit(0)
+  }
+
+  if (args[0] === 'manager') {
+    await runManager()
     process.exit(0)
   }
 
@@ -240,26 +518,17 @@ function main() {
     const retryPath = getBinaryPath({ forceUpdate: true })
     const retry = runNative(retryPath, args)
     if (!retry.error) {
-      if (retry.signal) {
-        const signum = constants.signals[retry.signal] ?? 0
-        process.exit(128 + signum)
-      }
+      if (retry.signal) { process.exit(128 + (constants.signals[retry.signal] ?? 0)) }
       process.exit(retry.status ?? 1)
     }
   }
   if (result.error) {
-    console.error(
-      `[${WRAPPER_NAME}] Failed to execute native binary at ` + binaryPath,
-    )
+    console.error(`[${WRAPPER_NAME}] Failed to execute native binary at ` + binaryPath)
     console.error('  ' + result.error.message)
     process.exit(1)
   }
-  if (result.signal) {
-    const signum = constants.signals[result.signal] ?? 0
-    process.exit(128 + signum)
-  } else {
-    process.exit(result.status ?? 1)
-  }
+  if (result.signal) { process.exit(128 + (constants.signals[result.signal] ?? 0)) }
+  else { process.exit(result.status ?? 1) }
 }
 
-main()
+main().catch((e) => { console.error(`[${WRAPPER_NAME}] Fatal: ${e.message}`); process.exit(1) })

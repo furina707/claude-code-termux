@@ -81,9 +81,9 @@ Upgrade can overwrite node_modules. Re-run installer.
 
 ## `claude update` shows "Claude is managed by a package manager"
 
-This happens when `/usr/bin/claude` is using a simple wrapper instead of the proper npm wrapper.
+This was caused by shell installers using a bare bash wrapper that bypassed the npm wrapper's update handling. This is now fixed — both `install.sh` and `install-simple.sh` install the proper npm wrapper automatically.
 
-**Fix:**
+If you still see this error on an older install:
 ```bash
 npm install -g --force @xurxuo/claude-code-termux@latest
 ```

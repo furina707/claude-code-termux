@@ -61,38 +61,21 @@ else
     echo "   ⚠️ Download failed"
 fi
 
-# CRITICAL: Create wrapper
-echo "🔧 Creating wrapper..."
-WRAPPER_FILE="/data/data/com.termux/files/usr/bin/claude"
-rm -f "$WRAPPER_FILE"
-
-# Write wrapper using printf (more reliable than heredoc)
-if command -v grun &>/dev/null; then
-    printf '%s\n' '#!/bin/bash' 'exec grun /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/claude "$@"' > "$WRAPPER_FILE"
-else
-    printf '%s\n' '#!/bin/bash' 'exec node /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code/bin/run.js "$@"' > "$WRAPPER_FILE"
-fi
-chmod +x "$WRAPPER_FILE"
+# Install npm wrapper (postinstall writes the proper Node wrapper automatically)
+# This ensures claude update / claude manager work correctly.
+echo "📥 Installing npm wrapper..."
+npm install -g --force @xurxuo/claude-code-termux@latest 2>/dev/null || true
 echo "   ✓ Wrapper created"
-
-# Backup npm wrapper to prevent overwrite
-if [[ -f "/data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe" ]]; then
-    mv /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe.bak 2>/dev/null || true
-fi
 
 # Test
 echo ""
 echo "✅ Done!"
-if command -v grun &>/dev/null; then
-    echo "Testing native binary..."
-    grun /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code-linux-arm64/claude --version 2>/dev/null || echo "Binary installed"
-else
-    echo "Testing with node..."
-    node /data/data/com.termux/files/usr/lib/node_modules/@anthropic-ai/claude-code/bin/run.js --version 2>/dev/null || echo "Installed"
-fi
+claude --version 2>/dev/null || echo "Installed (run claude --version to verify)"
 
 echo ""
-echo "Usage: claude --version  (test)"
-echo "       claude             (start)"
+echo "       claude --version  (test)"
+echo "       claude            (start)"
+echo "       claude update     (force update)"
+echo "       claude manager    (package manager)"
 echo ""
 echo "⚠️  Set API key: export ANTHROPIC_API_KEY=sk-ant-..."
