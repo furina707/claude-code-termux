@@ -1,11 +1,11 @@
 {
   "name": "@xurxuo/claude-code-termux",
-  "version": "2.1.172",
+  "version": "2.1.173",
   "bin": {
     "claude": "cli-wrapper.cjs"
   },
   "scripts": {
-  "postinstall": "node install.cjs"
+    "postinstall": "node install.cjs"
   },
   "engines": {
     "node": ">=18.0.0"
