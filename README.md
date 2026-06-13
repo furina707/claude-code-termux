@@ -1,12 +1,12 @@
 # Claude Code Termux
 
-![npm version](https://img.shields.io/npm/v/@xurxuo/claude-code-termux?style=flat-square&color=blue)
-![npm downloads (monthly)](https://img.shields.io/npm/dm/@xurxuo/claude-code-termux?style=flat-square&color=brightgreen&label=Monthly%20Downloads)
-![npm downloads (total)](https://img.shields.io/npm/dt/@xurxuo/claude-code-termux?style=flat-square&color=orange&label=Total%20Downloads)
-![npm downloads (weekly)](https://img.shields.io/npm/dw/@xurxuo/claude-code-termux?style=flat-square&label=Weekly)
-![license](https://img.shields.io/npm/l/@xurxuo/claude-code-termux?style=flat-square)
-![GitHub stars](https://img.shields.io/github/stars/DamnSit/claude-code-termux?style=flat-square&color=yellow)
-![GitHub forks](https://img.shields.io/github/forks/DamnSit/claude-code-termux?style=flat-square)
+![NPM Version](https://img.shields.io/npm/v/@xurxuo/claude-code-termux?style=flat-square&color=blue)
+![NPM Downloads (Monthly)](https://img.shields.io/npm/dm/@xurxuo/claude-code-termux?style=flat-square&color=brightgreen&label=Monthly%20Downloads)
+![NPM Downloads (Total)](https://img.shields.io/npm/dt/@xurxuo/claude-code-termux?style=flat-square&color=orange&label=Total%20Downloads)
+![NPM Downloads (Weekly)](https://img.shields.io/npm/dw/@xurxuo/claude-code-termux?style=flat-square&label=Weekly)
+![License](https://img.shields.io/npm/l/@xurxuo/claude-code-termux?style=flat-square)
+![GitHub Stars](https://img.shields.io/github/stars/DamnSit/claude-code-termux?style=flat-square&color=yellow)
+![GitHub Forks](https://img.shields.io/github/forks/DamnSit/claude-code-termux?style=flat-square)
 
 <p align="center">
   <a href="https://starmapper.bruniaux.com/DamnSit/claude-code-termux">
